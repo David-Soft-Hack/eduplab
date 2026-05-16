@@ -205,50 +205,57 @@ const Modules: React.FC = () => {
           >
             <div className="p-6 flex-1 space-y-5">
               <div className="flex items-start justify-between gap-4">
-                <div className="flex flex-col gap-1">
-                  <span className="text-[10px] font-black text-academic-600 uppercase tracking-widest">{module.codModule}</span>
+                <div className="flex-1 min-w-0">
+                  <span className="text-[10px] font-black text-academic-500 uppercase tracking-widest block mb-1">{module.codModule}</span>
                   <h3 className="text-lg font-black text-slate-800 leading-tight group-hover:text-academic-600 transition-colors uppercase tracking-tight">
                     {module.nombre}
                   </h3>
                 </div>
-                <div className="shrink-0 p-2 text-slate-300 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-all cursor-pointer">
+                <div className="shrink-0 p-2.5 text-slate-300 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-all cursor-pointer border border-transparent hover:border-slate-100">
                   <MoreHorizontal size={18} />
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
-                <div className="px-2.5 py-1 bg-slate-50 rounded-lg border border-slate-100 flex items-center gap-1.5">
-                  <GraduationCap size={12} className="text-slate-400" />
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight truncate max-w-[150px]">
+                <div className="px-3 py-1.5 bg-slate-50 rounded-xl border border-slate-100/50 flex items-center gap-2">
+                  <GraduationCap size={14} className="text-academic-600" />
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight truncate max-w-[150px]">
                     {module.carrera}
                   </span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 bg-slate-50/50 rounded-2xl border border-slate-100/50 flex flex-col gap-1">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100/50 flex flex-col gap-1 transition-all group-hover:bg-white group-hover:shadow-sm">
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Horas Acad.</span>
-                  <span className="text-sm font-black text-slate-700">{module.totalHoraAcademic}h</span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-lg font-black text-slate-800">{module.totalHoraAcademic}</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">ha</span>
+                  </div>
                 </div>
-                <div className="p-3 bg-slate-50/50 rounded-2xl border border-slate-100/50 flex flex-col gap-1">
+                <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100/50 flex flex-col gap-1 transition-all group-hover:bg-white group-hover:shadow-sm">
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Horas Reloj</span>
-                  <span className="text-sm font-black text-slate-700">{module.totalHoraReloj}h</span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-lg font-black text-slate-800">{module.totalHoraReloj}</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">hr</span>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-2 border-t border-slate-50">
-                <div className="flex -space-x-1.5">
+              <div className="flex items-center justify-between pt-3 border-t border-slate-50">
+                <div className="flex -space-x-2">
                   {[1, 2, 3].map(i => (
-                    <div key={i} className="w-6 h-6 rounded-full bg-white border border-slate-100 flex items-center justify-center text-[8px] font-black text-slate-400 shadow-sm">
+                    <div key={i} className="w-7 h-7 rounded-full bg-white border-2 border-slate-50 flex items-center justify-center text-[9px] font-black text-slate-400 shadow-sm group-hover:border-academic-50 transition-colors">
                       U{i}
                     </div>
                   ))}
-                  <div className="w-6 h-6 rounded-full bg-academic-50 border border-academic-100 flex items-center justify-center text-[8px] font-black text-academic-600 shadow-sm">
-                    +..
+                  <div className="w-7 h-7 rounded-full bg-academic-600 border-2 border-slate-50 flex items-center justify-center text-[9px] font-black text-white shadow-md">
+                    UDs
                   </div>
                 </div>
-                <div className="text-[9px] font-bold text-slate-300 uppercase tracking-widest italic">
-                  Ref: {module.fechaCreacion || '2024'}
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-indigo-50/50 rounded-lg text-[9px] font-black text-indigo-400 uppercase tracking-widest italic border border-indigo-50">
+                  <Clock size={10} />
+                  Plan {module.fechaCreacion || '24'}
                 </div>
               </div>
             </div>
@@ -678,42 +685,54 @@ const Modules: React.FC = () => {
 
               <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
                 {/* Units List Sidebar */}
-                <div className="w-full md:w-80 bg-slate-50/50 border-r border-slate-100 overflow-y-auto p-6 space-y-3">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Unidades Didácticas</h3>
+                <div className="w-full md:w-96 bg-slate-50/50 border-r border-slate-100 overflow-y-auto p-6 space-y-4">
+                  <div className="flex items-center justify-between mb-6 px-2">
+                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Unidades Didácticas</h3>
+                    <span className="px-2 py-0.5 bg-academic-100 text-academic-600 rounded text-[9px] font-black">{units.length} Uds</span>
                   </div>
                   {units.map((unit) => (
                     <div key={unit.id} className="group/unit relative">
                       <div
                         onClick={() => setActiveUnitInDetail(unit.id)}
                         className={cn(
-                          "w-full text-left p-4 rounded-2xl transition-all border-2 pr-10 cursor-pointer",
+                          "w-full text-left p-5 rounded-[2rem] transition-all border-2 pr-12 cursor-pointer relative overflow-hidden",
                           activeUnitInDetail === unit.id 
-                            ? "bg-white border-academic-500 shadow-md shadow-academic-100" 
-                            : "bg-transparent border-transparent hover:bg-slate-100 text-slate-500"
+                            ? "bg-white border-academic-600 shadow-xl shadow-academic-500/10" 
+                            : "bg-white border-slate-100 hover:border-academic-200 text-slate-500 hover:shadow-lg"
                         )}
                       >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-[10px] font-bold text-academic-600 uppercase tracking-tighter">UD • {unit.ponderacion}%</span>
-                          <span className="text-[10px] font-bold text-slate-400">{unit.hr}h</span>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className={cn(
+                            "px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border",
+                            activeUnitInDetail === unit.id 
+                              ? "bg-academic-600 text-white border-academic-600" 
+                              : "bg-slate-50 text-slate-400 border-slate-100"
+                          )}>
+                            UD • {unit.ponderacion}%
+                          </div>
+                          <div className="flex items-center gap-1">
+                             <Clock size={10} className="text-slate-300" />
+                             <span className="text-[10px] font-black font-mono">{unit.hr}h</span>
+                          </div>
                         </div>
+
                         {editingUnitId === unit.id ? (
-                          <div className="space-y-2 animate-in slide-in-from-top-2" onClick={(e) => e.stopPropagation()}>
+                          <div className="space-y-3 animate-in slide-in-from-top-2 relative z-10" onClick={(e) => e.stopPropagation()}>
                             <input 
                               autoFocus
-                              className="w-full bg-slate-100 rounded-md p-1.5 text-xs font-bold outline-academic-500"
+                              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-academic-500 text-slate-800"
                               value={unit.nombre}
                               onChange={(e) => {
                                 const newUnits = units.map(u => u.id === unit.id ? { ...u, nombre: e.target.value } : u);
                                 setUnits(newUnits);
                               }}
                             />
-                            <div className="flex gap-2">
+                            <div className="flex gap-3">
                               <div className="flex-1">
-                                <label className="text-[8px] font-bold text-slate-400 uppercase">H/R</label>
+                                <label className="text-[7px] font-black text-slate-400 uppercase mb-1 block">Horas Reloj</label>
                                 <input 
                                   type="number"
-                                  className="w-full bg-slate-100 rounded-md p-1 text-[10px] font-bold"
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-[10px] font-black text-academic-600"
                                   value={unit.hr}
                                   onChange={(e) => {
                                     const newUnits = units.map(u => u.id === unit.id ? { ...u, hr: Number(e.target.value) } : u);
@@ -722,10 +741,10 @@ const Modules: React.FC = () => {
                                 />
                               </div>
                               <div className="flex-1">
-                                <label className="text-[8px] font-bold text-slate-400 uppercase">Pond %</label>
+                                <label className="text-[7px] font-black text-slate-400 uppercase mb-1 block">Ponderación %</label>
                                 <input 
                                   type="number"
-                                  className="w-full bg-slate-100 rounded-md p-1 text-[10px] font-bold"
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-[10px] font-black text-academic-600"
                                   value={unit.ponderacion}
                                   onChange={(e) => {
                                     const newUnits = units.map(u => u.id === unit.id ? { ...u, ponderacion: Number(e.target.value) } : u);
@@ -734,29 +753,42 @@ const Modules: React.FC = () => {
                                 />
                               </div>
                             </div>
-                            <button onClick={(e) => { e.stopPropagation(); setEditingUnitId(null); }} className="w-full py-1 bg-academic-600 text-white rounded text-[10px] font-bold cursor-pointer">Guardar</button>
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); setEditingUnitId(null); }} 
+                              className="w-full py-2 bg-academic-600 hover:bg-academic-700 text-white rounded-xl text-[10px] font-black shadow-lg shadow-academic-500/20 active:scale-95 transition-all"
+                            >
+                              Guardar Cambios
+                            </button>
                           </div>
                         ) : (
                           <p className={cn(
-                            "font-bold text-sm leading-snug truncate",
+                            "font-black text-sm leading-tight line-clamp-2",
                             activeUnitInDetail === unit.id ? "text-slate-800" : "text-slate-600"
                           )}>
-                            {unit.nombre || 'Nueva Unidad'}
+                            {unit.nombre || 'Nueva Unidad Didáctica'}
                           </p>
                         )}
+                        
+                        {activeUnitInDetail === unit.id && (
+                          <motion.div 
+                            layoutId="unit-active-indicator"
+                            className="absolute left-0 top-0 bottom-0 w-1 bg-academic-600"
+                          />
+                        )}
                       </div>
-                      <div className="absolute right-2 top-4 flex flex-col gap-1 opacity-0 group-hover/unit:opacity-100 transition-opacity">
-                        <button onClick={(e) => { e.stopPropagation(); setEditingUnitId(unit.id); }} className="p-1 text-slate-400 hover:text-academic-600">
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 opacity-0 group-hover/unit:opacity-100 transition-all transform translate-x-2 group-hover/unit:translate-x-0 z-20">
+                        <button onClick={(e) => { e.stopPropagation(); setEditingUnitId(unit.id); }} className="p-2 bg-white shadow-md border border-slate-100 rounded-xl text-slate-400 hover:text-academic-600 hover:scale-110 transition-all">
                           <Edit2 size={12} />
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); deleteUnit(unit.id); }} className="p-1 text-slate-400 hover:text-rose-500">
+                        <button onClick={(e) => { e.stopPropagation(); deleteUnit(unit.id); }} className="p-2 bg-white shadow-md border border-slate-100 rounded-xl text-slate-400 hover:text-rose-500 hover:scale-110 transition-all">
                           <Trash2 size={12} />
                         </button>
                       </div>
                     </div>
                   ))}
-                  <button onClick={addUnit} className="w-full py-3 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 text-xs font-bold hover:border-academic-300 hover:text-academic-500 transition-all">
-                    + Agregar Unidad
+                  <button onClick={addUnit} className="w-full py-5 border-2 border-dashed border-slate-200 rounded-[2rem] text-slate-400 text-xs font-black uppercase tracking-widest hover:border-academic-300 hover:text-academic-500 hover:bg-academic-50/30 transition-all flex items-center justify-center gap-2">
+                    <Plus size={16} />
+                    Agregar Nueva Unidad
                   </button>
                 </div>
 

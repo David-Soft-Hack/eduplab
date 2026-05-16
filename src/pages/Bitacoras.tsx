@@ -216,47 +216,54 @@ const Bitacoras: React.FC = () => {
             transition={{ delay: idx * 0.05 }}
             className="group bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:border-academic-100 transition-all overflow-hidden flex flex-col h-full"
           >
-            <div className="p-5 flex-1 space-y-4">
-              <div className="flex items-start justify-between gap-4">
-                <h3 className="text-sm font-black text-slate-800 leading-tight group-hover:text-academic-600 transition-colors uppercase tracking-tight line-clamp-2">
-                  {b.moduloNombre || b.modulo}
-                </h3>
-                <div className={cn(
-                  "shrink-0 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest",
-                  b.estado === EstadoBitacora.ACTIVO ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"
-                )}>
-                  {b.estado}
+              <div className="p-6 flex-1 space-y-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[10px] font-black text-academic-500 uppercase tracking-widest mb-1 block">{b.id}</span>
+                    <h3 className="text-base font-black text-slate-800 leading-tight group-hover:text-academic-600 transition-colors uppercase tracking-tight line-clamp-2">
+                      {b.moduloNombre || b.modulo}
+                    </h3>
+                  </div>
+                  <div className={cn(
+                    "shrink-0 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border",
+                    b.estado === EstadoBitacora.ACTIVO 
+                      ? "bg-emerald-50 text-emerald-600 border-emerald-100" 
+                      : "bg-amber-50 text-amber-600 border-amber-100"
+                  )}>
+                    {b.estado}
+                  </div>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-3 gap-2">
-                <div className="flex flex-col gap-1">
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Grupo</span>
-                  <span className="text-[10px] font-black text-slate-700 truncate">{b.grupo}</span>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100/50">
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter block mb-1">Grupo</span>
+                    <span className="text-[11px] font-black text-slate-700 truncate block">{b.grupo}</span>
+                  </div>
+                  <div className="p-3 bg-indigo-50/30 rounded-2xl border border-indigo-100/30 font-display">
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter block mb-1">Turno</span>
+                    <span className="text-[11px] font-black text-indigo-600 truncate block">{b.turno}</span>
+                  </div>
+                  <div className="p-3 bg-academic-50 rounded-2xl border border-academic-100 font-display text-right">
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter block mb-1">Avance</span>
+                    <span className="text-[11px] font-black text-academic-600 block">{b.progreso}%</span>
+                  </div>
                 </div>
-                <div className="flex flex-col gap-1">
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Turno</span>
-                  <span className="text-[10px] font-black text-indigo-600 truncate">{b.turno}</span>
-                </div>
-                <div className="flex flex-col gap-1 text-right">
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Avance</span>
-                  <span className="text-[10px] font-black text-academic-600">{b.progreso}%</span>
-                </div>
-              </div>
 
-              <div className="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden">
-                <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: `${b.progreso}%` }}
-                  transition={{ duration: 1, delay: 0.3 }}
-                  className="h-full bg-academic-600 rounded-full" 
-                />
+                <div className="space-y-1.5">
+                  <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200/50 p-[1px]">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${b.progreso}%` }}
+                      transition={{ duration: 1, delay: 0.3 }}
+                      className="h-full bg-academic-600 rounded-full shadow-[0_0_8px_rgba(37,99,235,0.3)]" 
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[9px] font-bold text-slate-400">
+                    <span className="truncate italic">Actual: {b.actual || 'Sin inicio'}</span>
+                    <span>{b.progreso}%</span>
+                  </div>
+                </div>
               </div>
-
-              <div className="flex items-center gap-2 py-2 border-t border-slate-50 text-[10px] font-bold text-slate-400 italic">
-                <span className="truncate">Actual: {b.actual || 'Sin inicio'}</span>
-              </div>
-            </div>
 
             <button 
               onClick={() => {
@@ -406,69 +413,69 @@ const Bitacoras: React.FC = () => {
 
                     <div className="border border-slate-100 rounded-[2.5rem] overflow-hidden shadow-sm bg-white">
                       <table className="w-full border-separate border-spacing-0">
-                        <thead>
+                <thead>
                           <tr className="bg-slate-50/50">
                             <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center border-b border-slate-100">Sesión</th>
-                            <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Fecha</th>
-                            <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Contenido / Actividades</th>
-                            <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center border-b border-slate-100">Hora Acad.</th>
-                            <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center border-b border-slate-100">Hora Reloj</th>
+                            <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Fecha de Clase</th>
+                            <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Contenido Programado / Actividades</th>
+                            <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center border-b border-slate-100">Carga H/A</th>
+                            <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center border-b border-slate-100">Carga H/R</th>
                             <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center border-b border-slate-100">Estado</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-50">
+                        <tbody className="divide-y divide-slate-100/50">
                           {(selectedBitacora.calendar || []).map((session: any, idx: number) => (
                             <motion.tr 
                               key={session.id || idx}
                               initial={{ opacity: 0, y: 10 }}
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ delay: idx * 0.05 }}
-                              className="group hover:bg-slate-50/30 transition-colors"
+                              className="group hover:bg-slate-50/50 transition-all duration-300"
                             >
                               <td className="p-6 text-center">
-                                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-black text-slate-500 text-xs mx-auto group-hover:bg-academic-100 group-hover:text-academic-700 transition-colors">
+                                <div className="w-12 h-12 rounded-2xl bg-white border border-slate-100 shadow-sm flex items-center justify-center font-black text-slate-400 text-sm mx-auto group-hover:bg-academic-600 group-hover:text-white group-hover:border-academic-600 group-hover:scale-110 transition-all duration-300">
                                   {idx + 1}
                                 </div>
                               </td>
-                              <td className="p-6 min-w-[140px]">
-                                <div className="flex flex-col gap-1">
-                                  <span className="text-sm font-black text-slate-700 leading-tight">
-                                    {format(parseISO(session.fecha.split(',')[0]), 'dd MMM, yyyy', { locale: es })}
+                              <td className="p-6 min-w-[160px]">
+                                <div className="flex flex-col gap-1 font-display">
+                                  <span className="text-sm font-black text-slate-800 leading-tight">
+                                    {format(parseISO(session.fecha.split(',')[0]), 'dd MMMM', { locale: es })}
                                   </span>
-                                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                    {DIAS[getDay(parseISO(session.fecha.split(',')[0]))]}
+                                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest font-sans">
+                                    {DIAS[getDay(parseISO(session.fecha.split(',')[0]))]} {format(parseISO(session.fecha.split(',')[0]), 'yyyy')}
                                   </span>
                                 </div>
                               </td>
-                              <td className="p-6">
+                              <td className="p-6 min-w-[300px]">
                                 <div className="space-y-4">
                                   {session.actividades.map((act: any, actIdx: number) => (
-                                    <div key={act.id} className="group/act relative p-5 bg-white border border-slate-100 rounded-[1.5rem] shadow-sm hover:shadow-md hover:border-academic-200 transition-all flex flex-col gap-3">
+                                    <div key={act.id} className="group/act relative p-5 bg-white border border-slate-100 rounded-[1.5rem] shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-xl hover:shadow-academic-500/10 hover:border-academic-200 transition-all duration-300 flex flex-col gap-3">
                                       <div className="flex items-start gap-4">
-                                        <div className="shrink-0 w-10 h-10 rounded-xl bg-academic-50 text-academic-600 flex flex-col items-center justify-center border border-academic-100 shadow-sm">
-                                          <span className="text-[8px] font-black leading-none uppercase">UD</span>
+                                        <div className="shrink-0 w-10 h-10 rounded-xl bg-academic-50 text-academic-600 flex flex-col items-center justify-center border border-academic-100 shadow-sm group-hover/act:bg-academic-600 group-hover/act:text-white transition-colors">
+                                          <span className="text-[8px] font-black leading-none uppercase tracking-tighter">UD</span>
                                           <span className="text-xs font-black">{act.unitId || '1'}</span>
                                         </div>
                                         <div className="flex-1 min-w-0">
                                           <div className="flex items-center gap-2 mb-2">
-                                            <p className="text-sm font-black text-slate-800 leading-snug group-hover/act:text-academic-700 transition-colors truncate">
+                                            <p className="text-sm font-black text-slate-800 leading-snug group-hover/act:text-academic-700 transition-colors">
                                               {act.desc}
                                             </p>
                                             {act.isEvaluation && (
-                                              <span className="shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-lg bg-rose-50 text-rose-600 text-[8px] font-black uppercase tracking-widest border border-rose-100">
+                                              <span className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-50 text-rose-600 text-[9px] font-black uppercase tracking-widest border border-rose-100 shadow-sm animate-pulse">
                                                 <CheckCircle size={10} />
                                                 Evaluación
                                               </span>
                                             )}
                                           </div>
                                           
-                                          <div className="flex items-center justify-between mt-2">
+                                          <div className="flex items-center justify-between mt-3">
                                             <div className="flex items-center gap-3">
-                                              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 text-slate-500 rounded-lg text-[10px] font-bold uppercase tracking-tighter border border-slate-100/50">
+                                              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 text-slate-500 rounded-xl text-[10px] font-bold uppercase tracking-tighter border border-slate-100/50">
                                                 <Clock size={12} className="text-slate-400" />
-                                                {act.hoursInSession} HA
+                                                {act.hoursInSession} H/A
                                               </div>
-                                              <div className="px-2.5 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[10px] font-bold uppercase tracking-tighter border border-emerald-100/50">
+                                              <div className="px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-xl text-[10px] font-bold uppercase tracking-tighter border border-emerald-100/50">
                                                 Teórico-Práctico
                                               </div>
                                             </div>
@@ -482,8 +489,8 @@ const Bitacoras: React.FC = () => {
                                                   setBitacoras(prev => prev.map(b => b.id === selectedBitacora.id ? {...selectedBitacora, calendar: newCalendar} : b));
                                                 }}
                                                 className={cn(
-                                                  "p-2 rounded-xl border transition-all shadow-sm",
-                                                  act.isEvaluation ? "bg-rose-100 border-rose-200 text-rose-600" : "bg-white border-slate-100 text-slate-400 hover:text-rose-600 hover:border-rose-200"
+                                                  "p-2 rounded-xl border transition-all shadow-sm active:scale-90",
+                                                  act.isEvaluation ? "bg-rose-600 border-rose-600 text-white shadow-rose-200 shadow-lg" : "bg-white border-slate-100 text-slate-400 hover:text-rose-600 hover:border-rose-200"
                                                 )}
                                               >
                                                 <CheckCircle size={16} />
@@ -508,8 +515,8 @@ const Bitacoras: React.FC = () => {
                                                 <button 
                                                   onClick={() => document.getElementById(`file-upload-${act.id}`)?.click()}
                                                   className={cn(
-                                                    "p-2 rounded-xl border transition-all shadow-sm",
-                                                    act.instrumento ? "bg-indigo-100 border-indigo-200 text-indigo-600" : "bg-white border-slate-100 text-slate-400 hover:text-indigo-600 hover:border-indigo-200"
+                                                    "p-2 rounded-xl border transition-all shadow-sm active:scale-90",
+                                                    act.instrumento ? "bg-indigo-600 border-indigo-600 text-white shadow-indigo-200 shadow-lg" : "bg-white border-slate-100 text-slate-400 hover:text-indigo-600 hover:border-indigo-200"
                                                   )}
                                                 >
                                                   <Upload size={16} />
@@ -519,7 +526,7 @@ const Bitacoras: React.FC = () => {
                                               {act.instrumento && (
                                                 <button 
                                                   onClick={() => alert(`Descargando instrumento: ${act.instrumento}`)}
-                                                  className="p-2 rounded-xl border bg-emerald-100 border-emerald-200 text-emerald-600 hover:bg-emerald-200 transition-all shadow-sm"
+                                                  className="p-2 rounded-xl border bg-emerald-600 border-emerald-600 text-white hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200 active:scale-90"
                                                 >
                                                   <FileDown size={16} />
                                                 </button>
@@ -528,11 +535,14 @@ const Bitacoras: React.FC = () => {
                                           </div>
                                           
                                           {act.instrumento && (
-                                            <div className="mt-3 p-2 bg-indigo-50/50 border border-indigo-50 rounded-xl flex items-center gap-2">
-                                              <div className="p-1.5 bg-indigo-100 text-indigo-600 rounded-lg">
-                                                <FileText size={12} />
+                                            <div className="mt-4 p-3 bg-indigo-50/50 border border-indigo-100 rounded-2xl flex items-center gap-3 animate-in slide-in-from-top-2">
+                                              <div className="p-2 bg-indigo-600 text-white rounded-xl shadow-md shadow-indigo-200">
+                                                <FileText size={14} />
                                               </div>
-                                              <span className="text-[10px] font-bold text-indigo-600 truncate">{act.instrumento}</span>
+                                              <div className="flex-1 min-w-0">
+                                                <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest leading-none mb-1">Instrumento adjunto</p>
+                                                <p className="text-xs font-black text-indigo-700 truncate">{act.instrumento}</p>
+                                              </div>
                                             </div>
                                           )}
                                         </div>
@@ -540,25 +550,35 @@ const Bitacoras: React.FC = () => {
                                     </div>
                                   ))}
                                   {(session.actividades || []).length === 0 && (
-                                    <span className="text-xs text-slate-300 italic font-bold">Sin actividades asignadas</span>
+                                    <div className="p-4 bg-slate-50 border border-dashed border-slate-200 rounded-2xl text-center">
+                                      <span className="text-xs text-slate-300 font-bold italic tracking-wide">Sin actividades asignadas</span>
+                                    </div>
                                   )}
                                 </div>
                               </td>
                               <td className="p-6 text-center">
-                                <span className="text-sm font-black text-slate-700">{session.horasHA}h</span>
+                                <div className="inline-flex flex-col items-center">
+                                  <span className="text-lg font-black text-slate-800 leading-none">{session.horasHA}</span>
+                                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Horas</span>
+                                </div>
                               </td>
                               <td className="p-6 text-center">
-                                <span className="text-sm font-bold text-slate-400">{session.horasHR}h</span>
+                                <div className="inline-flex flex-col items-center">
+                                  <span className="text-lg font-bold text-slate-400 leading-none">{session.horasHR}</span>
+                                  <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest mt-1">Reloj</span>
+                                </div>
                               </td>
                               <td className="p-6 text-center">
                                 <div className="flex justify-center">
                                   {idx < 2 ? (
-                                    <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 shadow-sm group-hover:scale-110 transition-transform">
-                                      <CheckCircle size={18} />
+                                    <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex flex-col items-center justify-center border border-emerald-100 shadow-sm group-hover:scale-110 group-hover:bg-emerald-500 group-hover:text-white transition-all duration-300">
+                                      <CheckCircle size={22} />
+                                      <span className="text-[7px] font-black uppercase mt-0.5">Listo</span>
                                     </div>
                                   ) : (
-                                    <div className="w-10 h-10 rounded-full bg-slate-50 text-slate-300 flex items-center justify-center border border-slate-100/50 group-hover:text-academic-400 transition-colors">
-                                      <Clock size={18} />
+                                    <div className="w-12 h-12 rounded-full bg-slate-50 text-slate-300 flex flex-col items-center justify-center border border-slate-100/50 group-hover:text-academic-400 group-hover:border-academic-200 transition-all duration-300">
+                                      <Clock size={22} />
+                                      <span className="text-[7px] font-black uppercase mt-0.5">Pend</span>
                                     </div>
                                   )}
                                 </div>

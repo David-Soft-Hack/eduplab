@@ -50,15 +50,29 @@ const Sidebar: React.FC = () => {
         ))}
       </nav>
 
-      <div className="p-4 mt-auto border-t border-slate-50 space-y-2">
-        <button className="flex items-center gap-3 w-full px-4 py-3.5 rounded-2xl text-slate-500 hover:bg-slate-50 transition-all font-medium">
-          <Settings size={22} />
-          <span>Ajustes</span>
-        </button>
-        <button className="flex items-center gap-3 w-full px-4 py-3.5 rounded-2xl text-rose-500 hover:bg-rose-50 transition-all font-medium">
-          <LogOut size={22} />
-          <span>Cerrar Sesión</span>
-        </button>
+      <div className="p-4 mt-auto border-t border-slate-100 space-y-4">
+        <div className="px-2 py-3">
+          <div className="bg-slate-50 rounded-2xl p-3 flex items-center gap-3 border border-slate-100">
+            <div className="w-10 h-10 rounded-xl bg-academic-100 flex items-center justify-center font-black text-academic-700 shadow-sm border border-academic-200">
+              DS
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-black text-slate-800 truncate">David Soft</p>
+              <p className="text-[10px] font-bold text-slate-400 truncate uppercase tracking-tighter">Administrador</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <button className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-all font-bold text-xs uppercase tracking-widest">
+            <Settings size={18} />
+            <span>Ajustes</span>
+          </button>
+          <button className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-rose-500 hover:bg-rose-50 transition-all font-bold text-xs uppercase tracking-widest">
+            <LogOut size={18} />
+            <span>Salir</span>
+          </button>
+        </div>
       </div>
     </div>
   );
