@@ -13,7 +13,8 @@ import {
   ChevronDown,
   X,
   ChevronRight,
-  Info
+  Info,
+  Printer
 } from 'lucide-react';
 import { EstadoBitacora, TipoCarrera } from '../types';
 import { cn } from '../lib/utils';
@@ -41,6 +42,8 @@ const Bitacoras: React.FC = () => {
     horasSesion: 4,
     turno: 'Mañana',
   });
+
+  const [showPrintModal, setShowPrintModal] = useState(false);
 
   const selectedModule = modules.find(m => m.codModule === form.moduloId);
 
@@ -294,7 +297,11 @@ const Bitacoras: React.FC = () => {
                   </span>
                 </div>
                 <div className="flex items-center gap-4">
-                  <button className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition-colors">
+                  <button 
+                    onClick={() => setShowPrintModal(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition-colors"
+                  >
+                    <Printer size={14} />
                     Imprimir Plan
                   </button>
                   <button 
@@ -717,6 +724,171 @@ const Bitacoras: React.FC = () => {
                     </div>
                   </div>
                 )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Print Preview Modal - Excel Style */}
+      <AnimatePresence>
+        {showPrintModal && selectedBitacora && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-[1000px] bg-white shadow-2xl p-0 min-h-screen my-8"
+            >
+              {/* Toolbar */}
+              <div className="sticky top-0 z-10 p-4 bg-slate-800 text-white flex items-center justify-between no-print shadow-lg">
+                <div className="flex items-center gap-4">
+                  <Printer size={20} />
+                  <span className="font-bold">Vista Previa de Impresión</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => window.print()}
+                    className="px-4 py-2 bg-academic-600 hover:bg-academic-700 text-white rounded-lg font-bold transition-colors flex items-center gap-2"
+                  >
+                    <Printer size={16} />
+                    Imprimir
+                  </button>
+                  <button 
+                    onClick={() => setShowPrintModal(false)}
+                    className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Excel Content */}
+              <div className="p-8 print:p-0 print-content" id="printable-area">
+                <style>{`
+                  @media print {
+                    .no-print { display: none !important; }
+                    body { background: white !important; }
+                    .print-content { padding: 0 !important; width: 100% !important; }
+                    @page { margin: 1cm; }
+                  }
+                  .excel-table { border-collapse: collapse; width: 100%; border: 2px solid black; }
+                  .excel-table th, .excel-table td { border: 1px solid #777; padding: 6px 10px; font-family: 'Times New Roman', serif; font-size: 11px; }
+                  .excel-bg-yellow { background-color: #ffe699 !important; }
+                  .excel-header-center { text-align: center; font-weight: bold; }
+                `}</style>
+
+                {/* Header Section */}
+                <div className="flex items-stretch border-2 border-black mb-0 overflow-hidden">
+                  <div className="w-1/4 border-r border-black p-4 flex flex-col items-center justify-center">
+                    <img src="https://www.inatec.edu.ni/media/logo_original.png" alt="INATEC" className="h-12 object-contain" />
+                    <div className="mt-2 flex gap-1">
+                      <div className="w-4 h-4 bg-academic-600 rounded-full" />
+                      <div className="w-4 h-4 bg-rose-600 rounded-full" />
+                      <div className="w-4 h-4 bg-emerald-600 rounded-full" />
+                    </div>
+                  </div>
+                  <div className="w-3/4 flex flex-col font-black italic uppercase tracking-widest text-center py-4 justify-center leading-tight">
+                    <p className="text-sm border-b border-black pb-2 mb-2">DIRECCIÓN GENERAL DE FORMACIÓN PROFESIONAL</p>
+                    <p className="text-lg">PLAN CALENDARIO/BITÁCORA</p>
+                  </div>
+                </div>
+
+                {/* I. Datos Generales */}
+                <table className="excel-table border-t-0">
+                  <tbody>
+                    <tr className="excel-bg-yellow">
+                      <td colSpan={10} className="font-bold">I.- Datos Generales</td>
+                    </tr>
+                    <tr>
+                      <td colSpan={2} className="excel-bg-yellow font-bold">Nombre del Centro</td>
+                      <td colSpan={8} className="uppercase font-medium">CENTRO TECNOLOGICO DE MASAYA</td>
+                    </tr>
+                    <tr>
+                      <td colSpan={2} className="excel-bg-yellow font-bold">Carrera Técnica/ Curso</td>
+                      <td colSpan={5} className="uppercase font-medium">{selectedBitacora.carrera}</td>
+                      <td colSpan={1} className="excel-bg-yellow font-bold">Código del Grupo</td>
+                      <td colSpan={2} className="uppercase font-medium">{selectedBitacora.grupo}</td>
+                    </tr>
+                    <tr>
+                      <td colSpan={2} className="excel-bg-yellow font-bold">Módulo Formativo/ Asignatura</td>
+                      <td colSpan={8} className="uppercase font-medium text-blue-700">{selectedBitacora.moduloNombre}</td>
+                    </tr>
+                    <tr className="excel-header-center">
+                      <td className="excel-bg-yellow">Carga Horaria</td>
+                      <td className="font-medium">{modules.find(m => m.codModule === selectedBitacora.moduloId)?.totalHoraAcademic || 96}H</td>
+                      <td className="excel-bg-yellow">Fecha de Inicio</td>
+                      <td colSpan={2} className="font-medium">{selectedBitacora.calendar?.[0]?.fecha || 'N/A'}</td>
+                      <td className="excel-bg-yellow" colSpan={2}>Fecha de Finalización</td>
+                      <td colSpan={3} className="font-medium">{selectedBitacora.calendar?.[selectedBitacora.calendar.length - 1]?.fecha || 'N/A'}</td>
+                    </tr>
+                    <tr className="excel-header-center">
+                      <td rowSpan={2} className="excel-bg-yellow">Horario</td>
+                      <td className="excel-bg-yellow font-bold">Días</td>
+                      <td className="excel-bg-yellow">Lunes</td>
+                      <td className="excel-bg-yellow">Martes</td>
+                      <td className="excel-bg-yellow">Miércoles</td>
+                      <td className="excel-bg-yellow">Jueves</td>
+                      <td className="excel-bg-yellow">Viernes</td>
+                      <td className="excel-bg-yellow">Sábado</td>
+                      <td className="excel-bg-yellow" colSpan={2}>Domingo</td>
+                    </tr>
+                    <tr className="excel-header-center h-8">
+                       <td className="excel-bg-yellow">Hora de inicio y fin</td>
+                       <td className={cn(selectedBitacora.horario?.dias.includes('Lunes') && "bg-slate-100 font-bold")}>{selectedBitacora.horario?.dias.includes('Lunes') ? 'X' : ''}</td>
+                       <td className={cn(selectedBitacora.horario?.dias.includes('Martes') && "bg-slate-100 font-bold")}>{selectedBitacora.horario?.dias.includes('Martes') ? 'X' : ''}</td>
+                       <td className={cn(selectedBitacora.horario?.dias.includes('Miércoles') && "bg-slate-100 font-bold")}>{selectedBitacora.horario?.dias.includes('Miércoles') ? 'X' : ''}</td>
+                       <td className={cn(selectedBitacora.horario?.dias.includes('Jueves') && "bg-slate-100 font-bold")}>{selectedBitacora.horario?.dias.includes('Jueves') ? 'X' : ''}</td>
+                       <td className={cn(selectedBitacora.horario?.dias.includes('Viernes') && "bg-slate-100 font-bold")}>{selectedBitacora.horario?.dias.includes('Viernes') ? 'X' : ''}</td>
+                       <td className={cn(selectedBitacora.horario?.dias.includes('Sábado') && "bg-slate-100 font-bold")}>{selectedBitacora.horario?.dias.includes('Sábado') ? 'X' : ''}</td>
+                       <td className={cn(selectedBitacora.horario?.dias.includes('Domingo') && "bg-slate-100 font-bold")} colSpan={2}>{selectedBitacora.horario?.dias.includes('Domingo') ? 'X' : ''}</td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                {/* II. Dosificación de Actividades */}
+                <table className="excel-table border-t-0">
+                  <thead>
+                    <tr className="excel-bg-yellow">
+                      <td colSpan={10} className="font-bold">II.- Dosificación de Actividades</td>
+                    </tr>
+                    <tr className="excel-bg-yellow excel-header-center">
+                      <td rowSpan={2} width="8%">Unidad Didáctica</td>
+                      <td rowSpan={2} width="15%">Actividades</td>
+                      <td rowSpan={2} width="8%">Horas Asignadas</td>
+                      <td rowSpan={2} width="10%">Fecha Programada</td>
+                      <td colSpan={2} width="10%">Se impartió en la fecha programada</td>
+                      <td rowSpan={2} width="20%">Descripción de las Incidencias</td>
+                      <td rowSpan={2} width="24%" colSpan={3}>Estrategia de Recuperación</td>
+                    </tr>
+                    <tr className="excel-bg-yellow excel-header-center">
+                      <td>Si</td>
+                      <td>No</td>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedBitacora.calendar?.map((session: any, sIdx: number) => {
+                      return session.actividades.map((act: any, aIdx: number) => (
+                        <tr key={`${sIdx}-${aIdx}`}>
+                          {aIdx === 0 && <td rowSpan={session.actividades.length} className="excel-header-center font-bold">UD {act.unitId}</td>}
+                          <td>{act.desc}</td>
+                          <td className="excel-header-center">{act.hoursInSession}</td>
+                          {aIdx === 0 && <td rowSpan={session.actividades.length} className="excel-header-center">{session.fecha}</td>}
+                          <td className="excel-header-center">X</td>
+                          <td className="excel-header-center"></td>
+                          <td></td>
+                          <td colSpan={3}></td>
+                        </tr>
+                      ));
+                    })}
+                    {/* Add empty rows to complete page feel if needed */}
+                    {Array.from({ length: 15 - (selectedBitacora.calendar?.length || 0) }).map((_, i) => (
+                      <tr key={`empty-${i}`} className="h-6">
+                        <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td colSpan={3}></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </motion.div>
           </div>
