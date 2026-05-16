@@ -198,93 +198,84 @@ const Modules: React.FC = () => {
         ).map((module, idx) => (
           <motion.div
             key={module.codModule}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: idx * 0.1 }}
-            className="group bg-white p-1 rounded-[2.5rem] shadow-sm border border-slate-100 hover:shadow-2xl hover:shadow-slate-200/50 transition-all relative overflow-hidden"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: idx * 0.05 }}
+            className="group bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:border-academic-100 transition-all overflow-hidden flex flex-col h-full"
           >
-            {/* Decoration Bubble */}
-            <div className="absolute -right-8 -top-8 w-32 h-32 bg-academic-50 rounded-full group-hover:scale-110 transition-transform duration-500" />
-            
-            <div className="relative p-7">
-              <div className="flex items-start justify-between mb-6">
-                <div className="flex items-center gap-4">
-                  <div className="p-4 bg-academic-100 rounded-2xl text-academic-700">
-                    <BookOpen size={28} />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-bold text-academic-500 uppercase tracking-widest">{module.codModule}</span>
-                    <h3 className="text-xl font-display font-bold text-slate-800 mt-0.5">{module.nombre}</h3>
-                  </div>
+            <div className="p-6 flex-1 space-y-5">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] font-black text-academic-600 uppercase tracking-widest">{module.codModule}</span>
+                  <h3 className="text-lg font-black text-slate-800 leading-tight group-hover:text-academic-600 transition-colors uppercase tracking-tight">
+                    {module.nombre}
+                  </h3>
                 </div>
-                <button className="p-2 text-slate-300 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-all">
-                  <MoreHorizontal size={20} />
-                </button>
-              </div>
-
-              <div className="flex items-center gap-2 mb-6">
-                <div className="px-3 py-1 bg-slate-50 rounded-lg border border-slate-100 flex items-center gap-2">
-                  <GraduationCap size={14} className="text-slate-400" />
-                  <span className="text-sm font-bold text-slate-600">{module.carrera}</span>
+                <div className="shrink-0 p-2 text-slate-300 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-all cursor-pointer">
+                  <MoreHorizontal size={18} />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-8">
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100/50">
-                  <div className="flex items-center gap-2 text-slate-400 mb-1">
-                    <Clock size={14} />
-                    <span className="text-[10px] font-bold uppercase tracking-wider">H. Académicas</span>
-                  </div>
-                  <span className="text-lg font-bold text-slate-700">{module.totalHoraAcademic}h</span>
-                </div>
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100/50">
-                  <div className="flex items-center gap-2 text-slate-400 mb-1">
-                    <Clock size={14} />
-                    <span className="text-[10px] font-bold uppercase tracking-wider">H. Reloj</span>
-                  </div>
-                  <span className="text-lg font-bold text-slate-700">{module.totalHoraReloj}h</span>
+              <div className="flex items-center gap-2">
+                <div className="px-2.5 py-1 bg-slate-50 rounded-lg border border-slate-100 flex items-center gap-1.5">
+                  <GraduationCap size={12} className="text-slate-400" />
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight truncate max-w-[150px]">
+                    {module.carrera}
+                  </span>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-2">
-                <div className="flex -space-x-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 bg-slate-50/50 rounded-2xl border border-slate-100/50 flex flex-col gap-1">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Horas Acad.</span>
+                  <span className="text-sm font-black text-slate-700">{module.totalHoraAcademic}h</span>
+                </div>
+                <div className="p-3 bg-slate-50/50 rounded-2xl border border-slate-100/50 flex flex-col gap-1">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Horas Reloj</span>
+                  <span className="text-sm font-black text-slate-700">{module.totalHoraReloj}h</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-2 border-t border-slate-50">
+                <div className="flex -space-x-1.5">
                   {[1, 2, 3].map(i => (
-                    <div key={i} className="w-8 h-8 rounded-full bg-slate-200 border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-600">
+                    <div key={i} className="w-6 h-6 rounded-full bg-white border border-slate-100 flex items-center justify-center text-[8px] font-black text-slate-400 shadow-sm">
                       U{i}
                     </div>
                   ))}
-                  <div className="w-8 h-8 rounded-full bg-academic-50 border-2 border-white flex items-center justify-center text-[10px] font-bold text-academic-600">
-                    +2
+                  <div className="w-6 h-6 rounded-full bg-academic-50 border border-academic-100 flex items-center justify-center text-[8px] font-black text-academic-600 shadow-sm">
+                    +..
                   </div>
                 </div>
-                <button 
-                  onClick={() => {
-                    setSelectedModule(module);
-                    setShowDetailModal(true);
-                    
-                    // Load actual data if exists, otherwise load defaults/mock
-                    if (module.units && module.units.length > 0) {
-                      setUnits(module.units);
-                      setActivities(module.activities || []);
-                      setActiveUnitInDetail(module.units[0].id);
-                    } else {
-                      // Initial units for a new/unconfigured module
-                      const initialUnits = [
-                        { id: '1', nombre: 'Unidad 1: Fundamentos', hr: 12, ha: 16, ponderacion: 20 },
-                        { id: '2', nombre: 'Unidad 2: Desarrollo', hr: 18, ha: 24, ponderacion: 30 }
-                      ];
-                      setUnits(initialUnits);
-                      setActivities([]);
-                      setActiveUnitInDetail('1');
-                    }
-                  }}
-                  className="flex items-center gap-2 px-5 py-3 bg-academic-50 text-academic-600 rounded-xl font-bold text-sm hover:bg-academic-600 hover:text-white transition-all group/btn shadow-sm shadow-academic-100"
-                >
-                  Gestionar Unidades
-                  <ChevronRight size={16} className="group-hover/btn:translate-x-0.5 transition-transform" />
-                </button>
+                <div className="text-[9px] font-bold text-slate-300 uppercase tracking-widest italic">
+                  Ref: {module.fechaCreacion || '2024'}
+                </div>
               </div>
             </div>
+
+            <button 
+              onClick={() => {
+                setSelectedModule(module);
+                setShowDetailModal(true);
+                if (module.units && module.units.length > 0) {
+                  setUnits(module.units);
+                  setActivities(module.activities || []);
+                  setActiveUnitInDetail(module.units[0].id);
+                } else {
+                  const initialUnits = [
+                    { id: '1', nombre: 'Unidad 1: Fundamentos', hr: 12, ha: 16, ponderacion: 20 },
+                    { id: '2', nombre: 'Unidad 2: Desarrollo', hr: 18, ha: 24, ponderacion: 30 }
+                  ];
+                  setUnits(initialUnits);
+                  setActivities([]);
+                  setActiveUnitInDetail('1');
+                }
+              }}
+              className="w-full py-4 bg-slate-50 text-slate-500 font-bold text-[10px] uppercase tracking-widest hover:bg-academic-600 hover:text-white transition-all flex items-center justify-center gap-2 border-t border-slate-100"
+            >
+              Gestionar Unidades
+              <ChevronRight size={14} />
+            </button>
           </motion.div>
         ))}
       </div>
@@ -406,6 +397,20 @@ const Modules: React.FC = () => {
                                 onChange={(e) => setModuleForm({ ...moduleForm, horaAcademic: Number(e.target.value) })}
                                 className="w-full px-5 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-academic-600 outline-none font-medium text-slate-700" 
                               />
+                            </div>
+                            <div>
+                              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">Carrera / Programa</label>
+                              <select 
+                                value={moduleForm.carrera}
+                                onChange={(e) => setModuleForm({ ...moduleForm, carrera: e.target.value })}
+                                className="w-full px-5 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-academic-600 outline-none font-medium text-slate-700 appearance-none shadow-inner"
+                              >
+                                <option value="Análisis de Sistemas">Análisis de Sistemas</option>
+                                <option value="Ingeniería de Sistemas">Ingeniería de Sistemas</option>
+                                <option value="Arquitectura de Redes">Arquitectura de Redes</option>
+                                <option value="Ciberseguridad">Ciberseguridad</option>
+                                <option value="Técnico General en Computación">Técnico General en Computación</option>
+                              </select>
                             </div>
                           </div>
                         ) : (

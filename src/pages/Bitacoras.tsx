@@ -14,7 +14,13 @@ import {
   X,
   ChevronRight,
   Info,
-  Printer
+  Printer,
+  GraduationCap,
+  Search,
+  Filter,
+  Upload,
+  CheckCircle,
+  FileDown
 } from 'lucide-react';
 import { EstadoBitacora, TipoCarrera } from '../types';
 import { cn } from '../lib/utils';
@@ -27,6 +33,7 @@ const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', '
 const Bitacoras: React.FC = () => {
   const { modules, bitacoras, setBitacoras } = useAppContext();
   const [activeTab, setActiveTab] = useState<'A' | 'P'>('A');
+  const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedBitacora, setSelectedBitacora] = useState<any>(null);
@@ -156,6 +163,23 @@ const Bitacoras: React.FC = () => {
         </button>
       </div>
 
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="relative group flex-1">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-academic-500 transition-colors" size={18} />
+          <input 
+            type="text" 
+            placeholder="Buscar por módulo, grupo o carrera..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-11 pr-4 py-4 bg-white rounded-2xl border border-slate-100 shadow-sm focus:ring-2 focus:ring-academic-500 transition-all font-medium outline-none"
+          />
+        </div>
+        <button className="flex items-center gap-2 px-5 py-4 bg-white rounded-2xl border border-slate-100 shadow-sm text-slate-600 font-bold hover:bg-slate-50 transition-all shrink-0">
+          <Filter size={18} />
+          <span>Filtros</span>
+        </button>
+      </div>
+
       <div className="flex gap-2 p-1.5 bg-slate-100/50 w-fit rounded-2xl mx-auto md:mx-0">
         <button 
           onClick={() => setActiveTab('A')}
@@ -178,84 +202,72 @@ const Bitacoras: React.FC = () => {
       </div>
 
       <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {bitacoras.map((b, idx) => (
+        {bitacoras.filter(b => {
+          const matchesSearch = b.moduloNombre?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                               b.grupo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                               b.carrera?.toLowerCase().includes(searchTerm.toLowerCase());
+          const matchesTab = activeTab === 'A' ? b.estado === 'Activo' : b.estado !== 'Activo';
+          return matchesSearch && matchesTab;
+        }).map((b, idx) => (
           <motion.div
             key={`${b.id}-${idx}`}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.1 }}
-            className="group bg-white rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 transition-all overflow-hidden flex flex-col"
+            transition={{ delay: idx * 0.05 }}
+            className="group bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:border-academic-100 transition-all overflow-hidden flex flex-col h-full"
           >
-            <div className="p-7 flex-1">
-              <div className="flex items-start justify-between mb-6">
-                <div className="p-3 bg-academic-50 rounded-2xl text-academic-600">
-                  <FileText size={22} />
-                </div>
+            <div className="p-5 flex-1 space-y-4">
+              <div className="flex items-start justify-between gap-4">
+                <h3 className="text-sm font-black text-slate-800 leading-tight group-hover:text-academic-600 transition-colors uppercase tracking-tight line-clamp-2">
+                  {b.moduloNombre || b.modulo}
+                </h3>
                 <div className={cn(
-                  "px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider",
-                  b.estado === EstadoBitacora.ACTIVO ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-amber-50 text-amber-600 border border-amber-100"
+                  "shrink-0 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest",
+                  b.estado === EstadoBitacora.ACTIVO ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"
                 )}>
                   {b.estado}
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-xl font-display font-bold text-slate-800 leading-tight group-hover:text-academic-600 transition-colors uppercase tracking-tight">
-                    {b.moduloNombre || b.modulo}
-                  </h3>
-                  <div className="flex items-center gap-2 text-slate-400 mt-2">
-                    <span className="text-xs font-bold uppercase tracking-widest">Grupo:</span>
-                    <span className="text-xs font-bold text-slate-600 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">{b.grupo}</span>
-                    <span className="text-slate-300">•</span>
-                    <span className="text-xs font-bold text-slate-500">{b.carrera}</span>
-                    <span className="text-slate-300">•</span>
-                    <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">{b.turno}</span>
-                  </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="flex flex-col gap-1">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Grupo</span>
+                  <span className="text-[10px] font-black text-slate-700 truncate">{b.grupo}</span>
                 </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Turno</span>
+                  <span className="text-[10px] font-black text-indigo-600 truncate">{b.turno}</span>
+                </div>
+                <div className="flex flex-col gap-1 text-right">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Avance</span>
+                  <span className="text-[10px] font-black text-academic-600">{b.progreso}%</span>
+                </div>
+              </div>
 
-                <div className="pt-2">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Avance Académico</span>
-                    <span className="text-xs font-bold text-academic-600">{b.progreso}%</span>
-                  </div>
-                  <div className="h-2 w-full bg-slate-50 rounded-full overflow-hidden border border-slate-100">
-                    <motion.div 
-                      initial={{ width: 0 }}
-                      animate={{ width: `${b.progreso}%` }}
-                      transition={{ duration: 1, delay: 0.5 }}
-                      className="h-full bg-gradient-to-r from-academic-500 to-blue-400 rounded-full" 
-                    />
-                  </div>
-                </div>
+              <div className="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${b.progreso}%` }}
+                  transition={{ duration: 1, delay: 0.3 }}
+                  className="h-full bg-academic-600 rounded-full" 
+                />
+              </div>
 
-                <div className="p-4 bg-slate-50/50 border border-slate-100 rounded-2xl">
-                  <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                    <Activity size={12} className="text-academic-500" />
-                    Ejecutando actualmente
-                  </div>
-                  <p className="text-sm font-bold text-slate-600 truncate">{b.actual}</p>
-                </div>
+              <div className="flex items-center gap-2 py-2 border-t border-slate-50 text-[10px] font-bold text-slate-400 italic">
+                <span className="truncate">Actual: {b.actual || 'Sin inicio'}</span>
               </div>
             </div>
 
-            <div className="px-7 py-5 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Clock size={16} className="text-slate-400" />
-                <span className="text-xs font-bold text-slate-500">
-                  {b.horario?.dias?.[0]}... {b.horario?.horasSesion}h/sesión
-                </span>
-              </div>
-              <button 
-                onClick={() => {
-                  setSelectedBitacora(b);
-                  setShowDetailModal(true);
-                }}
-                className="p-2 bg-white rounded-xl shadow-sm text-academic-600 hover:bg-academic-600 hover:text-white transition-all transform hover:rotate-12"
-              >
-                <ArrowRight size={18} />
-              </button>
-            </div>
+            <button 
+              onClick={() => {
+                setSelectedBitacora(b);
+                setShowDetailModal(true);
+              }}
+              className="w-full py-3 bg-slate-50 text-slate-500 font-bold text-[10px] uppercase tracking-widest hover:bg-academic-600 hover:text-white transition-all flex items-center justify-center gap-2 border-t border-slate-100"
+            >
+              Gestionar Bitácora
+              <ArrowRight size={12} />
+            </button>
           </motion.div>
         ))}
       </div>
@@ -392,78 +404,166 @@ const Bitacoras: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="border border-slate-100 rounded-[2.5rem] overflow-hidden shadow-sm">
-                      <table className="w-full text-left border-collapse">
+                    <div className="border border-slate-100 rounded-[2.5rem] overflow-hidden shadow-sm bg-white">
+                      <table className="w-full border-separate border-spacing-0">
                         <thead>
-                          <tr className="bg-slate-50 border-b border-slate-100">
-                            <th className="p-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sesión</th>
-                            <th className="p-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fecha</th>
-                            <th className="p-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Contenido / Actividades</th>
-                            <th className="p-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Hora Acad.</th>
-                            <th className="p-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Hora Reloj</th>
-                            <th className="p-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Estado</th>
+                          <tr className="bg-slate-50/50">
+                            <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center border-b border-slate-100">Sesión</th>
+                            <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Fecha</th>
+                            <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Contenido / Actividades</th>
+                            <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center border-b border-slate-100">Hora Acad.</th>
+                            <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center border-b border-slate-100">Hora Reloj</th>
+                            <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center border-b border-slate-100">Estado</th>
                           </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="divide-y divide-slate-50">
                           {(selectedBitacora.calendar || []).map((session: any, idx: number) => (
-                            <tr key={session.id} className="border-b border-slate-50 group hover:bg-slate-50/50 transition-colors">
-                              <td className="p-5">
-                                <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-[11px] font-black text-slate-500">
+                            <motion.tr 
+                              key={session.id || idx}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: idx * 0.05 }}
+                              className="group hover:bg-slate-50/30 transition-colors"
+                            >
+                              <td className="p-6 text-center">
+                                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-black text-slate-500 text-xs mx-auto group-hover:bg-academic-100 group-hover:text-academic-700 transition-colors">
                                   {idx + 1}
                                 </div>
                               </td>
-                              <td className="p-5">
-                                <div className="flex flex-col">
-                                  <span className="font-bold text-slate-700">{format(parseISO(session.fecha), 'dd MMM, yyyy', { locale: es })}</span>
-                                  <span className="text-[10px] font-bold text-slate-400 uppercase">{DIAS[getDay(parseISO(session.fecha))]}</span>
+                              <td className="p-6 min-w-[140px]">
+                                <div className="flex flex-col gap-1">
+                                  <span className="text-sm font-black text-slate-700 leading-tight">
+                                    {format(parseISO(session.fecha.split(',')[0]), 'dd MMM, yyyy', { locale: es })}
+                                  </span>
+                                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                    {DIAS[getDay(parseISO(session.fecha.split(',')[0]))]}
+                                  </span>
                                 </div>
                               </td>
-                              <td className="p-5">
-                                <div className="space-y-3">
-                                  {session.actividades.map((act: any) => (
-                                    <div key={act.id} className="group/act p-3 bg-white border border-slate-50 rounded-2xl hover:border-academic-200 transition-all shadow-sm">
-                                      <div className="flex items-start gap-3">
-                                        <div className="w-8 h-8 rounded-lg bg-academic-50 text-academic-600 flex items-center justify-center shrink-0 font-bold text-[10px]">
-                                          UD{act.unitId}
+                              <td className="p-6">
+                                <div className="space-y-4">
+                                  {session.actividades.map((act: any, actIdx: number) => (
+                                    <div key={act.id} className="group/act relative p-5 bg-white border border-slate-100 rounded-[1.5rem] shadow-sm hover:shadow-md hover:border-academic-200 transition-all flex flex-col gap-3">
+                                      <div className="flex items-start gap-4">
+                                        <div className="shrink-0 w-10 h-10 rounded-xl bg-academic-50 text-academic-600 flex flex-col items-center justify-center border border-academic-100 shadow-sm">
+                                          <span className="text-[8px] font-black leading-none uppercase">UD</span>
+                                          <span className="text-xs font-black">{act.unitId || '1'}</span>
                                         </div>
-                                        <div className="flex-1">
-                                          <p className="text-sm font-bold text-slate-700 leading-snug group-hover/act:text-academic-700 transition-colors">{act.desc}</p>
-                                          <div className="flex items-center gap-3 mt-1.5">
-                                            <div className="flex items-center gap-1 text-[9px] font-bold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded uppercase">
-                                              <Clock size={10} />
-                                              {act.hoursInSession} HA
-                                            </div>
-                                            <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded uppercase">Teórico-Práctico</span>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-2 mb-2">
+                                            <p className="text-sm font-black text-slate-800 leading-snug group-hover/act:text-academic-700 transition-colors truncate">
+                                              {act.desc}
+                                            </p>
+                                            {act.isEvaluation && (
+                                              <span className="shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-lg bg-rose-50 text-rose-600 text-[8px] font-black uppercase tracking-widest border border-rose-100">
+                                                <CheckCircle size={10} />
+                                                Evaluación
+                                              </span>
+                                            )}
                                           </div>
+                                          
+                                          <div className="flex items-center justify-between mt-2">
+                                            <div className="flex items-center gap-3">
+                                              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 text-slate-500 rounded-lg text-[10px] font-bold uppercase tracking-tighter border border-slate-100/50">
+                                                <Clock size={12} className="text-slate-400" />
+                                                {act.hoursInSession} HA
+                                              </div>
+                                              <div className="px-2.5 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[10px] font-bold uppercase tracking-tighter border border-emerald-100/50">
+                                                Teórico-Práctico
+                                              </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-1.5 opacity-0 group-hover/act:opacity-100 transition-all transform translate-x-2 group-hover/act:translate-x-0">
+                                              <button 
+                                                onClick={() => {
+                                                  const newCalendar = [...selectedBitacora.calendar];
+                                                  newCalendar[idx].actividades[actIdx].isEvaluation = !newCalendar[idx].actividades[actIdx].isEvaluation;
+                                                  setSelectedBitacora({...selectedBitacora, calendar: newCalendar});
+                                                  setBitacoras(prev => prev.map(b => b.id === selectedBitacora.id ? {...selectedBitacora, calendar: newCalendar} : b));
+                                                }}
+                                                className={cn(
+                                                  "p-2 rounded-xl border transition-all shadow-sm",
+                                                  act.isEvaluation ? "bg-rose-100 border-rose-200 text-rose-600" : "bg-white border-slate-100 text-slate-400 hover:text-rose-600 hover:border-rose-200"
+                                                )}
+                                              >
+                                                <CheckCircle size={16} />
+                                              </button>
+
+                                              <div className="relative">
+                                                <input 
+                                                  id={`file-upload-${act.id}`}
+                                                  type="file" 
+                                                  accept=".doc,.docx"
+                                                  className="hidden" 
+                                                  onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                      const newCalendar = [...selectedBitacora.calendar];
+                                                      newCalendar[idx].actividades[actIdx].instrumento = file.name;
+                                                      setSelectedBitacora({...selectedBitacora, calendar: newCalendar});
+                                                      setBitacoras(prev => prev.map(b => b.id === selectedBitacora.id ? {...selectedBitacora, calendar: newCalendar} : b));
+                                                    }
+                                                  }}
+                                                />
+                                                <button 
+                                                  onClick={() => document.getElementById(`file-upload-${act.id}`)?.click()}
+                                                  className={cn(
+                                                    "p-2 rounded-xl border transition-all shadow-sm",
+                                                    act.instrumento ? "bg-indigo-100 border-indigo-200 text-indigo-600" : "bg-white border-slate-100 text-slate-400 hover:text-indigo-600 hover:border-indigo-200"
+                                                  )}
+                                                >
+                                                  <Upload size={16} />
+                                                </button>
+                                              </div>
+
+                                              {act.instrumento && (
+                                                <button 
+                                                  onClick={() => alert(`Descargando instrumento: ${act.instrumento}`)}
+                                                  className="p-2 rounded-xl border bg-emerald-100 border-emerald-200 text-emerald-600 hover:bg-emerald-200 transition-all shadow-sm"
+                                                >
+                                                  <FileDown size={16} />
+                                                </button>
+                                              )}
+                                            </div>
+                                          </div>
+                                          
+                                          {act.instrumento && (
+                                            <div className="mt-3 p-2 bg-indigo-50/50 border border-indigo-50 rounded-xl flex items-center gap-2">
+                                              <div className="p-1.5 bg-indigo-100 text-indigo-600 rounded-lg">
+                                                <FileText size={12} />
+                                              </div>
+                                              <span className="text-[10px] font-bold text-indigo-600 truncate">{act.instrumento}</span>
+                                            </div>
+                                          )}
                                         </div>
                                       </div>
                                     </div>
                                   ))}
-                                  {session.actividades.length === 0 && (
-                                    <span className="text-xs text-slate-400 italic">Sin actividades asignadas</span>
+                                  {(session.actividades || []).length === 0 && (
+                                    <span className="text-xs text-slate-300 italic font-bold">Sin actividades asignadas</span>
                                   )}
                                 </div>
                               </td>
-                              <td className="p-5">
-                                <span className="text-sm font-bold text-slate-600">{session.horasHA || session.horas}h</span>
+                              <td className="p-6 text-center">
+                                <span className="text-sm font-black text-slate-700">{session.horasHA}h</span>
                               </td>
-                              <td className="p-5">
-                                <span className="text-sm font-bold text-slate-400">{session.horasHR || (session.horas * 0.83).toFixed(1)}h</span>
+                              <td className="p-6 text-center">
+                                <span className="text-sm font-bold text-slate-400">{session.horasHR}h</span>
                               </td>
-                              <td className="p-5">
+                              <td className="p-6 text-center">
                                 <div className="flex justify-center">
                                   {idx < 2 ? (
-                                    <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
-                                      <CheckCircle2 size={16} />
+                                    <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 shadow-sm group-hover:scale-110 transition-transform">
+                                      <CheckCircle size={18} />
                                     </div>
                                   ) : (
-                                    <div className="w-8 h-8 rounded-full bg-slate-50 text-slate-300 flex items-center justify-center">
-                                      <Clock size={16} />
+                                    <div className="w-10 h-10 rounded-full bg-slate-50 text-slate-300 flex items-center justify-center border border-slate-100/50 group-hover:text-academic-400 transition-colors">
+                                      <Clock size={18} />
                                     </div>
                                   )}
                                 </div>
                               </td>
-                            </tr>
+                            </motion.tr>
                           ))}
                         </tbody>
                       </table>
@@ -551,6 +651,12 @@ const Bitacoras: React.FC = () => {
                                 <option key={m.codModule} value={m.codModule}>{m.nombre} ({m.totalHoraAcademic}h)</option>
                               ))}
                             </select>
+                            {selectedModule && (
+                              <div className="mt-2 flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] font-bold border border-indigo-100 animate-in fade-in slide-in-from-top-1">
+                                <GraduationCap size={12} />
+                                Carrera: {selectedModule.carrera}
+                              </div>
+                            )}
                           </div>
 
                           <div>
