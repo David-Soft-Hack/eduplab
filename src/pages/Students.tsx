@@ -14,10 +14,14 @@ import {
   CheckCircle2,
   UserCheck,
   UserMinus,
-  Filter
+  Filter,
+  FileSpreadsheet,
+  Upload,
+  AlertCircle
 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { cn } from '../lib/utils';
+import * as XLSX from 'xlsx';
 
 const Students: React.FC = () => {
   const { students, setStudents } = useAppContext();
@@ -25,6 +29,44 @@ const Students: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState<any>(null);
   const [form, setForm] = useState({ id: '', nombre: '', email: '', carrera: '', grupo: '', estado: 'Activo' });
+  const [isImporting, setIsImporting] = useState(false);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws);
+        
+        const newStudents = data.map((item: any, idx: number) => ({
+          id: item.ID || `STU-IMP-${students.length + idx + 1}`,
+          nombre: item.Nombre || item.nombre || 'Sin nombre',
+          email: item.Email || item.email || '',
+          carrera: item.Carrera || item.carrera || '',
+          grupo: item.Grupo || item.grupo || '',
+          estado: 'Activo',
+          fechaRegistro: new Date().toISOString().split('T')[0]
+        }));
+
+        setStudents([...students, ...newStudents]);
+        alert(`¡Éxito! Se han importado ${newStudents.length} estudiantes.`);
+      } catch (error) {
+        console.error("Error al procesar Excel:", error);
+        alert("Error al procesar el archivo. Asegúrate de que sea un formato válido.");
+      } finally {
+        setIsImporting(false);
+        e.target.value = ''; // Reset input
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
 
   const filteredStudents = students.filter(s => 
     s.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -81,13 +123,31 @@ const Students: React.FC = () => {
           <h1 className="text-3xl font-display font-bold text-slate-800">Directorio de Estudiantes</h1>
           <p className="text-slate-500 mt-1">Gestión académica y seguimiento de matriculados</p>
         </div>
-        <button 
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center justify-center gap-2 px-6 py-4 bg-academic-600 text-white rounded-2xl font-bold shadow-lg shadow-academic-600/20 hover:bg-academic-700 transition-all active:scale-95"
-        >
-          <UserPlus size={20} />
-          <span>Registrar Estudiante</span>
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <div className="relative group">
+            <label className="flex items-center justify-center gap-2 px-6 py-4 bg-white border border-slate-200 text-slate-600 rounded-2xl font-bold shadow-sm hover:bg-slate-50 transition-all active:scale-95 cursor-pointer">
+              <Upload size={20} className="text-academic-600" />
+              <span>Importar Excel</span>
+              <input 
+                type="file" 
+                accept=".xlsx, .xls, .csv" 
+                className="hidden" 
+                onChange={handleFileUpload}
+                disabled={isImporting}
+              />
+            </label>
+            <div className="absolute top-full left-0 mt-2 w-64 p-3 bg-slate-800 text-white text-[10px] rounded-xl font-bold opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 shadow-xl">
+              Columnas requeridas: <span className="text-academic-400">Nombre, Email, Carrera, Grupo</span>. El ID es opcional.
+            </div>
+          </div>
+          <button 
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center justify-center gap-2 px-6 py-4 bg-academic-600 text-white rounded-2xl font-bold shadow-lg shadow-academic-600/20 hover:bg-academic-700 transition-all active:scale-95"
+          >
+            <UserPlus size={20} />
+            <span>Registrar Estudiante</span>
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">

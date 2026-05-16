@@ -6,6 +6,7 @@ import {
   FileText, 
   Calendar, 
   Users,
+  CheckSquare,
   Settings, 
   LogOut,
   GraduationCap
@@ -19,6 +20,7 @@ const Sidebar: React.FC = () => {
     { icon: FileText, label: 'Bitácoras', path: '/bitacoras' },
     { icon: Calendar, label: 'Calendario', path: '/calendar' },
     { icon: Users, label: 'Estudiantes', path: '/students' },
+    { icon: CheckSquare, label: 'Asistencias', path: '/attendance' },
   ];
 
   return (

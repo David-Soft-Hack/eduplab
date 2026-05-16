@@ -8,12 +8,18 @@ interface AppContextType {
   setBitacoras: React.Dispatch<React.SetStateAction<any[]>>;
   students: any[];
   setStudents: React.Dispatch<React.SetStateAction<any[]>>;
+  attendanceRecords: any[];
+  setAttendanceRecords: React.Dispatch<React.SetStateAction<any[]>>;
+  notifications: any[];
+  setNotifications: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [modules, setModules] = useState<any[]>(MOCK_MODULES);
+  const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
   const [bitacoras, setBitacoras] = useState<any[]>([
     { 
       id: 'B-2026-1', 
@@ -70,7 +76,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   ]);
 
   return (
-    <AppContext.Provider value={{ modules, setModules, bitacoras, setBitacoras, students, setStudents }}>
+    <AppContext.Provider value={{ 
+      modules, setModules, 
+      bitacoras, setBitacoras, 
+      students, setStudents,
+      attendanceRecords, setAttendanceRecords,
+      notifications, setNotifications
+    }}>
       {children}
     </AppContext.Provider>
   );
