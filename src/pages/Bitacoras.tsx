@@ -20,7 +20,10 @@ import {
   Filter,
   Upload,
   CheckCircle,
-  FileDown
+  FileDown,
+  Phone,
+  Mail,
+  MessageSquare
 } from 'lucide-react';
 import { EstadoBitacora, TipoCarrera } from '../types';
 import { cn } from '../lib/utils';
@@ -30,15 +33,67 @@ import { es } from 'date-fns/locale';
 
 const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
+const PRECONFIGURED_HOLIDAYS = [
+  { dateStr: '01-01', name: 'Año Nuevo' },
+  { dateStr: '01-18', name: 'Día de la Autonomía de la Costa Caribe' },
+  { dateStr: '02-02', name: 'Día de la Candelaria' },
+  { dateStr: '02-21', name: 'Día de la Rebeldía' },
+  { dateStr: '05-01', name: 'Día del Trabajador' },
+  { dateStr: '05-30', name: 'Día de las Madres' },
+  { dateStr: '07-19', name: 'Día del Triunfo de la Revolución' },
+  { dateStr: '09-14', name: 'Batalla de San Jacinto' },
+  { dateStr: '09-15', name: 'Día de la Independencia de Centroamérica' },
+  { dateStr: '11-08', name: 'Aniversario de los Héroes de la Patria' },
+  { dateStr: '12-08', name: 'Día de la Gritería / Inmaculada Concepción' },
+  { dateStr: '12-25', name: 'Día de Navidad' },
+];
+
 const Bitacoras: React.FC = () => {
-  const { modules, bitacoras, setBitacoras } = useAppContext();
+  const { modules, bitacoras, setBitacoras, teachers } = useAppContext();
   const [activeTab, setActiveTab] = useState<'A' | 'P'>('A');
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedBitacora, setSelectedBitacora] = useState<any>(null);
+  const [activeWhatsAppAlert, setActiveWhatsAppAlert] = useState<any>(null);
+  const [customToast, setCustomToast] = useState<string | null>(null);
   const [step, setStep] = useState(1);
   const [isSuccess, setIsSuccess] = useState(false);
+
+  // Load custom holidays to synchronize across pages
+  const [customHolidays] = useState<any[]>(() => {
+    const saved = localStorage.getItem('eduplan_custom_holidays');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return [
+      { date: '2026-06-15', label: 'Asueto Municipal Patronal de Masaya' },
+      { date: '2026-07-23', label: 'Efeméride Estudiantil Regional' }
+    ];
+  });
+
+  const checkIsHoliday = (date: Date) => {
+    const mmDd = format(date, 'MM-dd');
+    const isPreconfigured = PRECONFIGURED_HOLIDAYS.some(h => h.dateStr === mmDd);
+    if (isPreconfigured) {
+      const match = PRECONFIGURED_HOLIDAYS.find(h => h.dateStr === mmDd);
+      return { isHoliday: true, name: match?.name || 'Feriado Nacional' };
+    }
+
+    const yyyyMmDd = format(date, 'yyyy-MM-dd');
+    const isCustom = customHolidays.some(h => h.date === yyyyMmDd);
+    if (isCustom) {
+      const match = customHolidays.find(h => h.date === yyyyMmDd);
+      return { isHoliday: true, name: match?.label || 'Asueto Metodológico' };
+    }
+
+    if (date.getFullYear() === 2026) {
+      if (mmDd === '04-02') return { isHoliday: true, name: 'Jueves Santo' };
+      if (mmDd === '04-03') return { isHoliday: true, name: 'Viernes Santo' };
+    }
+
+    return { isHoliday: false, name: '' };
+  };
 
   // Form State
   const [form, setForm] = useState({
@@ -48,11 +103,50 @@ const Bitacoras: React.FC = () => {
     diasSemana: [] as string[],
     horasSesion: 4,
     turno: 'Mañana',
+    docenteId: '',
+    frecuenciaPreset: 'Personalizado'
   });
 
   const [showPrintModal, setShowPrintModal] = useState(false);
 
   const selectedModule = modules.find(m => m.codModule === form.moduloId);
+
+  const handlePresetChange = (preset: string) => {
+    let dias: string[] = [];
+    let horas = 4;
+    switch (preset) {
+      case 'Técnico Matutino 7h':
+        dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
+        horas = 7;
+        break;
+      case 'Técnico Nocturno 4h':
+        dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
+        horas = 4;
+        break;
+      case 'Sabatino 10h':
+        dias = ['Sábado'];
+        horas = 10;
+        break;
+      case 'Dominical 10h':
+        dias = ['Domingo'];
+        horas = 10;
+        break;
+      case 'Curso Regular':
+        dias = ['Lunes', 'Miércoles', 'Viernes'];
+        horas = 3;
+        break;
+      default:
+        dias = [];
+        horas = 4;
+        break;
+    }
+    setForm(prev => ({
+      ...prev,
+      frecuenciaPreset: preset,
+      diasSemana: dias,
+      horasSesion: horas
+    }));
+  };
 
   const generateCalendar = () => {
     if (!selectedModule) return [];
@@ -60,46 +154,92 @@ const Bitacoras: React.FC = () => {
     let currentDate = parseISO(form.fechaInicio);
     let remainingHA = selectedModule.totalHoraAcademic;
     const sessions = [];
-    const activities = [...(selectedModule.activities || [])];
+    const activities = [...(selectedModule.units?.flatMap(u => u.activities || []) || [])];
+    
+    // Fallback if no specific activities exist
+    if (activities.length === 0) {
+      selectedModule.units?.forEach((u: any) => {
+        activities.push({
+          id: u.codUnit,
+          desc: u.nombre,
+          nombre: u.nombre,
+          ha: u.totalHoraAcademic || Math.round(selectedModule.totalHoraAcademic / (selectedModule.units?.length || 1))
+        });
+      });
+    }
+    
     let currentActivityIndex = 0;
     let accumulatedHoursForActivity = 0;
 
     // Safety limit to prevent infinite loop
     let iterations = 0;
-    while (remainingHA > 0 && iterations < 300) {
+    while (remainingHA > 0 && iterations < 500) {
       iterations++;
       const dayName = DIAS[getDay(currentDate)];
       
       if (form.diasSemana.includes(dayName)) {
+        // Holiday/Asueto check
+        const holidayStatus = checkIsHoliday(currentDate);
+        if (holidayStatus.isHoliday) {
+          // Push a skipped holiday entry so it is visible in the calendar list
+          sessions.push({
+            id: `HOL-${iterations}`,
+            fecha: format(currentDate, 'yyyy-MM-dd'),
+            horasHA: 0,
+            horasHR: 0,
+            isHoliday: true,
+            holidayName: holidayStatus.name,
+            actividades: []
+          });
+          currentDate = addDays(currentDate, 1);
+          continue;
+        }
+
         const sessionHours = Math.min(form.horasSesion, remainingHA);
         
         // Find which activities fit in this session
-        const sessionActivities = [];
+        const sessionActivities: any[] = [];
         let sessionHoursLeft = sessionHours;
 
         while (sessionHoursLeft > 0 && currentActivityIndex < activities.length) {
           const activity = activities[currentActivityIndex];
-          const activityRemainingHA = activity.ha - accumulatedHoursForActivity;
+          const actHA = Number(activity.ha || activity.totalHoraAcademic || 10);
+          const activityRemainingHA = actHA - accumulatedHoursForActivity;
+          const label = activity.desc || activity.nombre || 'Contenido Técnico de Unidad';
           
           if (activityRemainingHA <= sessionHoursLeft) {
-            // Activity fits and maybe more
-            sessionActivities.push({ ...activity, hoursInSession: activityRemainingHA });
+            sessionActivities.push({ 
+              id: activity.id || `act-${currentActivityIndex}`,
+              desc: label,
+              hoursInSession: activityRemainingHA 
+            });
             sessionHoursLeft -= activityRemainingHA;
             currentActivityIndex++;
             accumulatedHoursForActivity = 0;
           } else {
-            // Activity is too long, takes the rest of the session
-            sessionActivities.push({ ...activity, hoursInSession: sessionHoursLeft });
+            sessionActivities.push({ 
+              id: activity.id || `act-${currentActivityIndex}`,
+              desc: label,
+              hoursInSession: sessionHoursLeft 
+            });
             accumulatedHoursForActivity += sessionHoursLeft;
             sessionHoursLeft = 0;
           }
         }
 
+        if (sessionActivities.length === 0 && sessionHoursLeft > 0) {
+          sessionActivities.push({
+            id: `gen-act-${iterations}`,
+            desc: `Desarrollo de Contenido y Prácticas - Módulo ${selectedModule.nombre}`,
+            hoursInSession: sessionHoursLeft
+          });
+        }
+
         sessions.push({
-          id: `S-${sessions.length + 1}`,
+          id: `S-${sessions.filter(s => !s.isHoliday).length + 1}`,
           fecha: format(currentDate, 'yyyy-MM-dd'),
           horasHA: sessionHours,
-          horasHR: Number((sessionHours * (selectedModule.totalHoraReloj / selectedModule.totalHoraAcademic)).toFixed(2)),
+          horasHR: Number((sessionHours * ((selectedModule.totalHoraReloj || 100) / (selectedModule.totalHoraAcademic || 120))).toFixed(2)),
           actividades: sessionActivities
         });
         
@@ -114,6 +254,38 @@ const Bitacoras: React.FC = () => {
 
   const handleCreate = () => {
     const calendar = generateCalendar();
+    const classDaysOnly = calendar.filter(s => !s.isHoliday);
+    
+    // Auto-generate requirements milestones based on computed class sessions
+    const midIdx = Math.floor(classDaysOnly.length * 0.35);
+    const endIdx = classDaysOnly.length - 1;
+    
+    const docControl = [
+      { 
+        id: 'chk-1', 
+        name: 'Cuaderno Metodológico de Unidad I', 
+        estado: 'Pendiente', 
+        originalEstado: 'Al Día', 
+        fechaLimite: classDaysOnly[midIdx]?.fecha || format(addDays(new Date(), 10), 'yyyy-MM-dd') 
+      },
+      { 
+        id: 'chk-2', 
+        name: 'Portafolio e Instrumento de Evaluación Parcial', 
+        estado: 'Pendiente', 
+        originalEstado: 'Al Día', 
+        fechaLimite: classDaysOnly[Math.min(midIdx + 3, endIdx)]?.fecha || format(addDays(new Date(), 20), 'yyyy-MM-dd') 
+      },
+      { 
+        id: 'chk-3', 
+        name: 'Entrega de Cuaderno de Módulo Completo', 
+        estado: 'Pendiente', 
+        originalEstado: 'Al Día', 
+        fechaLimite: classDaysOnly[endIdx]?.fecha || format(addDays(new Date(), 30), 'yyyy-MM-dd') 
+      }
+    ];
+
+    const teacherObj = teachers.find((t: any) => t.id === form.docenteId) || { nombre: 'Carlos Mendoza', telefono: '+505 8888-1122' };
+
     const newBitacora = {
       id: `B-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000)}`,
       grupo: form.grupo,
@@ -123,9 +295,14 @@ const Bitacoras: React.FC = () => {
       turno: form.turno,
       estado: EstadoBitacora.ACTIVO,
       progreso: 0,
-      actual: calendar.length > 0 ? calendar[0].actividades[0]?.desc : 'Sin iniciar',
+      actual: classDaysOnly.length > 0 ? classDaysOnly[0].actividades?.[0]?.desc : 'Sin iniciar',
       fechaInicio: form.fechaInicio,
       horario: { dias: form.diasSemana, horasSesion: form.horasSesion },
+      docenteId: form.docenteId || 'DOC-001',
+      docenteNombre: teacherObj.nombre,
+      docenteTelefono: teacherObj.telefono || '+505 8888-1122',
+      frecuenciaPreset: form.frecuenciaPreset,
+      docControl,
       calendar
     };
 
@@ -135,7 +312,45 @@ const Bitacoras: React.FC = () => {
       setShowAddModal(false);
       setIsSuccess(false);
       setStep(1);
+      // Reset form variables
+      setForm({
+        moduloId: '',
+        grupo: '',
+        fechaInicio: format(new Date(), 'yyyy-MM-dd'),
+        diasSemana: [],
+        horasSesion: 4,
+        turno: 'Mañana',
+        docenteId: '',
+        frecuenciaPreset: 'Personalizado'
+      });
     }, 1500);
+  };
+
+  const handleUpdateRequirementStatus = (bitacoraId: string, requirementId: string, newStatus: string) => {
+    setBitacoras((prev: any[]) => prev.map(b => {
+      if (b.id === bitacoraId) {
+        const updatedDocControl = (b.docControl || []).map((chk: any) => {
+          if (chk.id === requirementId) {
+            return { ...chk, estado: newStatus };
+          }
+          return chk;
+        });
+        
+        if (selectedBitacora && selectedBitacora.id === bitacoraId) {
+          setSelectedBitacora((prevSel: any) => ({
+            ...prevSel,
+            docControl: updatedDocControl
+          }));
+        }
+
+        return { ...b, docControl: updatedDocControl };
+      }
+      return b;
+    }));
+  };
+
+  const handleGenerateWhatsAppAlert = (bitacora: any, checklist: any) => {
+    setActiveWhatsAppAlert({ bitacora, checklist });
   };
 
   const toggleDia = (dia: string) => {
@@ -336,6 +551,7 @@ const Bitacoras: React.FC = () => {
                 <div className="grid lg:grid-cols-4 gap-8">
                   {/* Stats Sidebar */}
                   <div className="lg:col-span-1 space-y-6">
+                    {/* Resumen del Plan */}
                     <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
                       <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6 px-1">Resumen del Plan</h3>
                       <div className="space-y-6">
@@ -379,23 +595,67 @@ const Bitacoras: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="p-6 bg-academic-600 rounded-[2rem] shadow-xl shadow-academic-600/20 text-white">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="p-2 bg-white/20 text-white rounded-xl">
-                          <Activity size={18} />
+                    {/* Docente Asignado Card */}
+                    <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 px-1">Docente Asignado</h4>
+                      <div className="flex items-center gap-3 bg-white p-3.5 border border-slate-100 rounded-2xl shadow-sm">
+                        <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center font-black text-xs shrink-0 font-mono">
+                          {selectedBitacora.docenteNombre ? selectedBitacora.docenteNombre.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : 'CM'}
                         </div>
-                        <h4 className="font-bold text-white text-sm">Sesión Actual</h4>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-black text-slate-850 truncate">{selectedBitacora.docenteNombre || 'Ing. Carlos Mendoza'}</p>
+                          <p className="text-[10px] text-slate-405 font-semibold">Tutor Metodológico</p>
+                        </div>
+                      </div>
+                      <div className="mt-4 pt-3.5 border-t border-slate-200/60 space-y-2.5 text-[11px] font-semibold text-slate-500 px-1">
+                        <p className="flex items-center gap-2"><Phone size={11} className="text-slate-400 shrink-0" /> {selectedBitacora.docenteTelefono || '+505 8888-1122'}</p>
+                        <p className="flex items-center gap-2 truncate"><Mail size={11} className="text-slate-400 shrink-0" /> docente.inatec@example.com</p>
+                      </div>
+                    </div>
+
+                    {/* Control de Requisitos Documentales List */}
+                    <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 space-y-4">
+                      <div className="flex items-center justify-between px-1">
+                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Requisitos</h4>
+                        <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">ACTIVO</span>
                       </div>
                       <div className="space-y-3">
-                        <p className="text-xs font-medium text-white/80 leading-relaxed">
-                          {selectedBitacora.calendar?.[0] ? format(parseISO(selectedBitacora.calendar[0].fecha), "EEEE dd 'de' MMMM", { locale: es }) : 'No programada'}
-                        </p>
-                        <div className="p-3 bg-white/10 rounded-xl border border-white/10">
-                          <p className="text-[10px] font-bold text-white/50 uppercase mb-1 uppercase">Contenidos:</p>
-                          <p className="text-xs font-bold text-white leading-tight">
-                            {selectedBitacora.calendar?.[0]?.actividades[0]?.desc || 'Sin iniciar'}
-                          </p>
-                        </div>
+                        {(selectedBitacora.docControl || [
+                          { id: 'chk-1', name: 'Cuaderno Metodológico de Unidad I', estado: 'Pendiente', fechaLimite: format(addDays(new Date(), 10), 'yyyy-MM-dd') },
+                          { id: 'chk-2', name: 'Portafolio e Instrumento de Evaluación Parcial', estado: 'Pendiente', fechaLimite: format(addDays(new Date(), 20), 'yyyy-MM-dd') },
+                          { id: 'chk-3', name: 'Entrega de Cuaderno de Módulo Completo', estado: 'Pendiente', fechaLimite: format(addDays(new Date(), 30), 'yyyy-MM-dd') }
+                        ]).map((chk: any) => (
+                          <div key={chk.id} className="p-3 bg-white border border-slate-200 hover:border-slate-300 rounded-2xl transition-all shadow-sm space-y-2">
+                            <p className="text-[10.5px] font-black leading-tight text-slate-800 uppercase tracking-tight">{chk.name}</p>
+                            <p className="text-[9.5px] text-slate-400 font-bold">Límite: {chk.fechaLimite}</p>
+                            
+                            <div className="flex items-center justify-between gap-1 pt-2 border-t border-slate-100">
+                              <select
+                                value={chk.estado}
+                                onChange={(e) => handleUpdateRequirementStatus(selectedBitacora.id, chk.id, e.target.value)}
+                                className={cn(
+                                  "px-2.5 py-1 rounded-lg text-[9px] font-black uppercase outline-none border transition-colors cursor-pointer",
+                                  chk.estado === 'Aprobado' ? "bg-emerald-50 text-emerald-800 border-emerald-200" :
+                                  chk.estado === 'Entregado' ? "bg-indigo-50 text-indigo-800 border-indigo-200" :
+                                  "bg-amber-50 text-amber-800 border-amber-201"
+                                )}
+                              >
+                                <option value="Pendiente">⚠️ Pendiente</option>
+                                <option value="Entregado">📩 Entregado</option>
+                                <option value="Aprobado">🟢 Aprobado</option>
+                              </select>
+                              
+                              <button
+                                onClick={() => handleGenerateWhatsAppAlert(selectedBitacora, chk)}
+                                className="p-1 px-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg text-emerald-700 font-extrabold text-[8.5px] uppercase tracking-wider flex items-center gap-1 transition-all"
+                                title="Generar alerta de recordatorio WhatsApp"
+                              >
+                                <MessageSquare size={10} className="shrink-0" />
+                                Alerta
+                              </button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
@@ -424,14 +684,47 @@ const Bitacoras: React.FC = () => {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100/50">
-                          {(selectedBitacora.calendar || []).map((session: any, idx: number) => (
-                            <motion.tr 
-                              key={session.id || idx}
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: idx * 0.05 }}
-                              className="group hover:bg-slate-50/50 transition-all duration-300"
-                            >
+                          {(selectedBitacora.calendar || []).map((session: any, idx: number) => {
+                            if (session.isHoliday) {
+                              return (
+                                <motion.tr 
+                                  key={session.id || idx}
+                                  initial={{ opacity: 0, y: 10 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  className="bg-amber-50/40 hover:bg-amber-50/60 transition-colors"
+                                >
+                                  <td className="p-6 text-center">
+                                    <div className="w-12 h-12 rounded-2xl bg-amber-100 border border-amber-200 shadow-sm flex items-center justify-center font-black text-amber-700 text-sm mx-auto">
+                                      🌴
+                                    </div>
+                                  </td>
+                                  <td className="p-6 min-w-[160px]">
+                                    <div className="flex flex-col gap-1 font-display">
+                                      <span className="text-sm font-black text-amber-900 leading-tight">
+                                        {format(parseISO(session.fecha), 'dd MMMM', { locale: es })}
+                                      </span>
+                                      <span className="text-[11px] font-bold text-amber-500 uppercase tracking-widest font-sans">
+                                        {DIAS[getDay(parseISO(session.fecha))]} {format(parseISO(session.fecha), 'yyyy')}
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <td className="p-6 text-left" colSpan={4}>
+                                    <div className="inline-flex items-center gap-2.5 px-4 py-3.5 bg-white border border-amber-200/85 rounded-2xl text-amber-850 text-xs font-black uppercase tracking-wide shadow-sm font-sans">
+                                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                                      Feriado / Asueto: <span className="text-amber-700 font-extrabold ml-1">{session.holidayName || 'Día No Laboral'}</span> — Clases Suspendidas (Omitido)
+                                    </div>
+                                  </td>
+                                </motion.tr>
+                              );
+                            }
+                            return (
+                              <motion.tr 
+                                key={session.id || idx}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: idx * 0.05 }}
+                                className="group hover:bg-slate-50/50 transition-all duration-300"
+                              >
                               <td className="p-6 text-center">
                                 <div className="w-12 h-12 rounded-2xl bg-white border border-slate-100 shadow-sm flex items-center justify-center font-black text-slate-400 text-sm mx-auto group-hover:bg-academic-600 group-hover:text-white group-hover:border-academic-600 group-hover:scale-110 transition-all duration-300">
                                   {idx + 1}
@@ -584,7 +877,8 @@ const Bitacoras: React.FC = () => {
                                 </div>
                               </td>
                             </motion.tr>
-                          ))}
+                          );
+                        })}
                         </tbody>
                       </table>
                     </div>
@@ -664,7 +958,7 @@ const Bitacoras: React.FC = () => {
                             <select 
                               value={form.moduloId}
                               onChange={(e) => setForm({ ...form, moduloId: e.target.value })}
-                              className="w-full px-5 py-4 bg-slate-50 rounded-2xl border border-slate-100 outline-none focus:ring-2 focus:ring-academic-600 font-bold text-slate-700"
+                              className="w-full px-5 py-4 bg-slate-50 rounded-2xl border border-slate-100 outline-none focus:ring-2 focus:ring-academic-600 font-bold text-slate-700 animate-none"
                             >
                               <option value="">Seleccione un módulo...</option>
                               {modules.map(m => (
@@ -677,6 +971,21 @@ const Bitacoras: React.FC = () => {
                                 Carrera: {selectedModule.carrera}
                               </div>
                             )}
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block">Asignar Docente Metodológico *</label>
+                            <select 
+                              value={form.docenteId}
+                              onChange={(e) => setForm({ ...form, docenteId: e.target.value })}
+                              className="w-full px-5 py-4 bg-slate-50 rounded-2xl border border-slate-100 outline-none focus:ring-2 focus:ring-academic-600 font-bold text-slate-700"
+                              required
+                            >
+                              <option value="">Seleccione un docente...</option>
+                              {teachers.map((t: any) => (
+                                <option key={t.id} value={t.id}>{t.nombre} ({t.especialidad})</option>
+                              ))}
+                            </select>
                           </div>
 
                           <div>
@@ -734,7 +1043,21 @@ const Bitacoras: React.FC = () => {
 
                         <div className="space-y-6">
                           <div>
-                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 block">Frecuencia Semanal</label>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 block">Frecuencia Preestablecida (INATEC)</label>
+                            <select
+                              value={form.frecuenciaPreset}
+                              onChange={(e) => handlePresetChange(e.target.value)}
+                              className="w-full px-5 py-4 bg-white rounded-2xl border-2 border-slate-100 outline-none focus:ring-2 focus:ring-academic-600 font-bold text-slate-700 shadow-sm mb-4 cursor-pointer"
+                            >
+                              <option value="Personalizado">⚙️ Personalizado (Seleccionar Días Manualmente)</option>
+                              <option value="Técnico Matutino 7h">☀️ Técnico Matutino (Lunes-Viernes, 7h por sesión)</option>
+                              <option value="Técnico Nocturno 4h">🌙 Técnico Nocturno (Lunes-Viernes, 4h por sesión)</option>
+                              <option value="Sabatino 10h">📅 Fin de Semana Sabatino (Sábado, 10h por sesión)</option>
+                              <option value="Dominical 10h">📅 Fin de Semana Dominical (Domingo, 10h por sesión)</option>
+                              <option value="Curso Regular">⏱️ Curso Regular (Lun, Mié, Vie, 3h por sesión)</option>
+                            </select>
+
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 block">Días de Clase (Frecuencia Semanal)</label>
                             <div className="grid grid-cols-2 gap-3">
                               {DIAS.map(dia => (
                                 <button
@@ -1018,6 +1341,106 @@ const Bitacoras: React.FC = () => {
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* WhatsApp Early Warning Overlay & Message Simulator */}
+      <AnimatePresence>
+        {activeWhatsAppAlert && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setActiveWhatsAppAlert(null)}
+              className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 30 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 30 }}
+              className="relative w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl p-8 overflow-hidden border border-slate-100 flex flex-col gap-6"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-emerald-50 rounded-2xl text-emerald-600">
+                  <MessageSquare size={24} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-800 leading-tight">Alerta Temprana Automatizada</h3>
+                  <p className="text-xs font-semibold text-emerald-600 tracking-wider uppercase mt-0.5">Notificación Metodológica Escuchada</p>
+                </div>
+                <button 
+                  onClick={() => setActiveWhatsAppAlert(null)}
+                  className="ml-auto p-2 bg-slate-50 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="p-6 bg-slate-50 rounded-2xl border border-slate-150 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white text-xs font-bold">W</div>
+                  <div>
+                    <h5 className="text-[11px] font-black text-slate-700 leading-none">WhatsApp API Gateway (Simulado)</h5>
+                    <p className="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-wide">Para: {activeWhatsAppAlert.bitacora.docenteNombre}</p>
+                  </div>
+                </div>
+                <div className="p-4 bg-emerald-50 border-r-4 border-emerald-500 rounded-2xl text-xs font-medium text-slate-800 leading-relaxed font-sans shadow-sm">
+                  ⚠️ <strong>ALERTA TEMPRANA INATEC MASAYA</strong> ⚠️
+                  <br /><br />
+                  Estimado docente <strong>{activeWhatsAppAlert.bitacora.docenteNombre}</strong>, le recordamos que de conformidad a las directrices pedagógicas del módulo formativo <strong>"{activeWhatsAppAlert.bitacora.moduloNombre}"</strong> para la carrera de <strong>{activeWhatsAppAlert.bitacora.carrera || 'Técnico Especialista'}</strong>, la entrega del registro:
+                  <br /><br />
+                  📄 <strong>"{activeWhatsAppAlert.checklist.name}"</strong>
+                  <br /><br />
+                  alcanza su fecha límite el <strong>{activeWhatsAppAlert.checklist.fechaLimite}</strong> y se encuentra en estado: <strong className="text-amber-700">"{activeWhatsAppAlert.checklist.estado}"</strong>.
+                  <br /><br />
+                  Agradecemos su entrega puntual para mantener el control académico del grupo {activeWhatsAppAlert.bitacora.grupo}.
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setActiveWhatsAppAlert(null)}
+                  className="flex-1 py-4 bg-slate-50 hover:bg-slate-100 text-slate-500 font-bold text-xs rounded-xl transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const name = activeWhatsAppAlert.bitacora.docenteNombre;
+                    const docName = activeWhatsAppAlert.checklist.name;
+                    setActiveWhatsAppAlert(null);
+                    setCustomToast(`✅ Recordatorio metodológico enviado con éxito a ${name} para la entrega de: ${docName}`);
+                    setTimeout(() => {
+                      setCustomToast(null);
+                    }, 5000);
+                  }}
+                  className="flex-1 py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-emerald-600/20 active:scale-95 transition-all text-center"
+                >
+                  🚀 Enviar Recordatorio
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Custom Floating Toast Alert Component */}
+      <AnimatePresence>
+        {customToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 50, scale: 0.9 }}
+            className="fixed bottom-6 right-6 z-[80] max-w-md p-4 bg-slate-900 text-white rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-800"
+          >
+            <div className="w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
+              <MessageSquare size={16} />
+            </div>
+            <p className="text-xs font-bold leading-tight text-slate-100">{customToast}</p>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

@@ -98,6 +98,8 @@ const Modules: React.FC = () => {
     ponderacion: 0
   });
 
+  const [allPrograms, setAllPrograms] = useState<any[]>([]);
+
   // Load programs from localStorage on startup
   useEffect(() => {
     const saved = localStorage.getItem('eduplan_academic_programs');
@@ -105,6 +107,7 @@ const Modules: React.FC = () => {
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
+          setAllPrograms(parsed);
           const names = parsed.map((p: any) => p.nombre);
           setProgramsList(names);
           return;
@@ -113,14 +116,34 @@ const Modules: React.FC = () => {
         // Fallback
       }
     }
-    const defaultNames = [
-      'Análisis de Sistemas',
-      'Ingeniería de Sistemas',
-      'Bases de Datos Avanzadas',
-      'Diseño UX/UI Avanzado'
+    const defaultPrograms = [
+      { id: 'prog-1', tipo: 'Técnico', nombre: 'Análisis de Sistemas' },
+      { id: 'prog-2', tipo: 'Técnico', nombre: 'Ingeniería de Sistemas' },
+      { id: 'prog-3', tipo: 'Curso', nombre: 'Bases de Datos Avanzadas' },
+      { id: 'prog-4', tipo: 'Curso', nombre: 'Diseño UX/UI Avanzado' }
     ];
-    setProgramsList(defaultNames);
+    setAllPrograms(defaultPrograms);
+    setProgramsList(defaultPrograms.map(p => p.nombre));
   }, []);
+
+  const selectedProgramObj = allPrograms.find(p => p.nombre === generalForm.carrera) || { tipo: 'Técnico' };
+  const selectedProgramTipo = selectedProgramObj.tipo;
+
+  // Auto-calculate clock hours from academic hours
+  useEffect(() => {
+    if (generalForm.totalHoraAcademic > 0) {
+      const calculatedReloj = selectedProgramTipo === 'Técnico'
+        ? Math.round(generalForm.totalHoraAcademic * 0.75)
+        : generalForm.totalHoraAcademic;
+      setGeneralForm(prev => {
+        // Only update if it has changed to prevent infinite loops
+        if (prev.totalHoraReloj !== calculatedReloj) {
+          return { ...prev, totalHoraReloj: calculatedReloj };
+        }
+        return prev;
+      });
+    }
+  }, [generalForm.totalHoraAcademic, selectedProgramTipo]);
 
   const resetForm = () => {
     setGeneralForm({
@@ -298,6 +321,12 @@ const Modules: React.FC = () => {
 
   const handleSaveWholeModule = () => {
     // Collect the final whole module properties
+    const totalTempPonderacion = tempUnits.reduce((acc, u) => acc + u.ponderacion, 0);
+    if (tempUnits.length > 0 && totalTempPonderacion !== 100) {
+      showToast(`Error: Las ponderaciones acumuladas suman ${totalTempPonderacion}%. Deben sumar exactamente 100% para cumplir la norma INATEC Masaya.`, 'danger');
+      return;
+    }
+
     const finalModule = {
       codModule: generalForm.codModule.trim(),
       nombre: generalForm.nombre.trim(),
@@ -692,6 +721,18 @@ const Modules: React.FC = () => {
                           <option key={pName} value={pName}>{pName}</option>
                         ))}
                       </select>
+                      
+                      <div className="mt-2.5 flex items-center justify-between px-4 py-2 bg-indigo-50/40 border border-indigo-100 rounded-xl">
+                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-wide">
+                          Oferta Metodológica: <span className={cn(
+                            "px-2 py-0.5 rounded text-[9px] font-black uppercase inline-block ml-1.5",
+                            selectedProgramTipo === 'Técnico' ? "bg-indigo-100 text-indigo-750 border border-indigo-200" : "bg-teal-100 text-teal-750 border border-teal-200"
+                          )}>{selectedProgramTipo}</span>
+                        </span>
+                        <span className="text-[9.5px] font-bold text-slate-500">
+                          {selectedProgramTipo === 'Técnico' ? "⏱️ Horas Académicas = 45 min (auto-conv: horas reloj x0.75)" : "⏱️ Horas Reloj = Horas Académicas (60 min)"}
+                        </span>
+                      </div>
                     </div>
 
                     {/* Hours and counts */}

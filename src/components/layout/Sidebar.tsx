@@ -7,7 +7,8 @@ import {
   Settings, 
   LogOut,
   GraduationCap,
-  Award
+  Award,
+  CalendarRange
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -17,6 +18,7 @@ const Sidebar: React.FC = () => {
     { icon: BookOpen, label: 'Módulos', path: '/modules' },
     { icon: FileText, label: 'Bitácoras', path: '/bitacoras' },
     { icon: Award, label: 'Programas', path: '/programs' },
+    { icon: CalendarRange, label: 'Planificación', path: '/plan' },
   ];
 
   return (

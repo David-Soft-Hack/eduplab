@@ -33,7 +33,7 @@ import { format, isSameDay, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 const Dashboard: React.FC = () => {
-  const { modules, bitacoras, notifications, teachers } = useAppContext();
+  const { modules, bitacoras, teachers } = useAppContext();
   const navigate = useNavigate();
   const today = new Date();
 
@@ -116,36 +116,7 @@ const Dashboard: React.FC = () => {
         </div>
       </header>
       
-      {/* Notifications Ribbon if any */}
-      <AnimatePresence>
-        {notifications.length > 0 && (
-          <motion.div 
-            initial={{ opacity: 0, height: 0, y: -10 }}
-            animate={{ opacity: 1, height: 'auto', y: 0 }}
-            exit={{ opacity: 0, height: 0, y: -10 }}
-            className="overflow-hidden"
-          >
-            <div className="bg-amber-50/65 border border-amber-200/50 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
-              <div className="flex items-center gap-3 w-full sm:w-auto">
-                <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
-                  <Bell className="animate-bounce" size={16} />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="text-xs font-black text-slate-850 uppercase tracking-tight leading-none">Tienes {notifications.length} registros de asistencia pendientes</h3>
-                  <p className="text-[10px] text-amber-700 font-bold opacity-80 mt-1 lines-clamp-1">Por favor regulariza la asistencia de las sesiones pasadas.</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => navigate('/attendance')}
-                className="w-full sm:w-auto px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 shrink-0 shadow-sm"
-              >
-                Atender Ahora
-                <ArrowRight size={11} strokeWidth={2.5} />
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">

@@ -5,11 +5,11 @@ import Dashboard from './pages/Dashboard';
 import Modules from './pages/Modules';
 import Bitacoras from './pages/Bitacoras';
 import Programas from './pages/Programas';
+import Planificacion from './pages/Planificacion';
 import Login from './pages/Login';
 import Splash from './pages/Splash';
 import Sidebar from './components/layout/Sidebar';
 import MobileNav from './components/layout/MobileNav';
-import NotificationManager from './components/NotificationManager';
 
 import { AppProvider } from './context/AppContext';
 
@@ -50,6 +50,7 @@ const App: React.FC = () => {
                     <Route path="/modules" element={<Modules />} />
                     <Route path="/bitacoras" element={<Bitacoras />} />
                     <Route path="/programs" element={<Programas />} />
+                    <Route path="/plan" element={<Planificacion />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </div>
@@ -57,7 +58,6 @@ const App: React.FC = () => {
 
               {/* Mobile Bottom Navigation */}
               <MobileNav />
-              <NotificationManager />
             </div>
           )}
         </AnimatePresence>

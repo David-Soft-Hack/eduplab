@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, BookOpen, FileText, Award } from 'lucide-react';
+import { LayoutDashboard, BookOpen, FileText, Award, CalendarRange } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 const MobileNav: React.FC = () => {
@@ -9,10 +9,11 @@ const MobileNav: React.FC = () => {
     { icon: BookOpen, label: 'Módulos', path: '/modules' },
     { icon: FileText, label: 'Bitácoras', path: '/bitacoras' },
     { icon: Award, label: 'Programas', path: '/programs' },
+    { icon: CalendarRange, label: 'Plan', path: '/plan' },
   ];
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-slate-100 px-2 py-1.5 z-40 grid grid-cols-4 justify-items-center items-center shadow-lg safe-bottom">
+    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-slate-100 px-2 py-1.5 z-40 grid grid-cols-5 justify-items-center items-center shadow-lg safe-bottom">
       {navItems.map((item) => (
         <NavLink
           key={item.path}
