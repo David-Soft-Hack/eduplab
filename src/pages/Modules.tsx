@@ -1,158 +1,354 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Plus, 
   Search, 
-  MoreHorizontal, 
-  BookOpen, 
   GraduationCap, 
-  ChevronRight,
-  Clock,
-  Layers,
-  Edit2,
-  Trash2,
-  Filter,
-  Upload,
-  FileText,
-  X,
-  FileSignature,
+  Clock, 
+  Layers, 
+  Edit2, 
+  Trash2, 
+  X, 
+  Check,
   ChevronDown,
-  CheckCircle2
+  ChevronUp,
+  UploadCloud,
+  FileText,
+  AlertTriangle,
+  ArrowRight,
+  ArrowLeft,
+  FileCheck
 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import { cn } from '../lib/utils';
 
+interface ToastAlert {
+  id: string;
+  message: string;
+  type: 'success' | 'info' | 'danger';
+}
+
+interface DidacticUnit {
+  codUnit: string;
+  nombre: string;
+  totalHoraAcademic: number;
+  totalHoraReloj: number;
+  ponderacion: number;
+  planningFileName?: string;
+}
+
 const Modules: React.FC = () => {
   const { modules, setModules } = useAppContext();
   const [searchTerm, setSearchTerm] = useState('');
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [selectedModule, setSelectedModule] = useState<any>(null);
-  const [activeUnitInDetail, setActiveUnitInDetail] = useState<string | null>(null);
-  const [creationTab, setCreationTab] = useState<'manual' | 'upload'>('manual');
-  const [step, setStep] = useState(1);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
+  
+  // Expanded modules state (to show units in the grid)
+  const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({});
 
-  // Stepper Form States
-  const [moduleForm, setModuleForm] = useState({
-    nombre: '',
+  // Main Modals toggles
+  const [showFormModal, setShowFormModal] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [selectedModule, setSelectedModule] = useState<any>(null);
+
+  // Stepper state (1: General Info, 2: Didactic Units)
+  const [currentStep, setCurrentStep] = useState<1 | 2>(1);
+
+  // Deletion Modal
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [moduleToDelete, setModuleToDelete] = useState<any>(null);
+
+  // List of Academic Programs
+  const [programsList, setProgramsList] = useState<string[]>([]);
+
+  // Toast notifications
+  const [toasts, setToasts] = useState<ToastAlert[]>([]);
+
+  // Drag & Drop / File state for sub-form
+  const [dragActive, setDragActive] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const showToast = (message: string, type: 'success' | 'info' | 'danger' = 'success') => {
+    const id = String(Date.now());
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 3500);
+  };
+
+  // Form States for main modules
+  const [generalForm, setGeneralForm] = useState({
     codModule: '',
-    carrera: 'Ing. Sistemas',
-    horaAcademic: 0,
-    horaReloj: 0
+    nombre: '',
+    totalHoraReloj: 0,
+    totalHoraAcademic: 0,
+    cantidadUnidades: 0,
+    carrera: '',
+    planningFileName: ''
   });
 
-  const [units, setUnits] = useState([{ id: '1', nombre: '', hr: 0, ha: 0, ponderacion: 0 }]);
-  const [activities, setActivities] = useState([{ id: '1', unitId: '1', desc: '', hr: 0, ha: 0 }]);
+  // State for temporary units of the module being created/edited
+  const [tempUnits, setTempUnits] = useState<DidacticUnit[]>([]);
 
-  const addUnit = () => setUnits([...units, { id: String(Date.now()), nombre: '', hr: 0, ha: 0, ponderacion: 0 }]);
-  const addActivity = () => setActivities([...activities, { id: String(Date.now()), unitId: activeUnitInDetail || units[0].id, desc: '', hr: 0, ha: 0 }]);
+  // Sub-form States for individual Didactic Unit creation/edit
+  const [editingUnitIndex, setEditingUnitIndex] = useState<number | null>(null);
+  const [unitForm, setUnitForm] = useState({
+    codUnit: '',
+    nombre: '',
+    totalHoraAcademic: 0,
+    totalHoraReloj: 0,
+    ponderacion: 0
+  });
 
-  const deleteUnit = (id: string) => {
-    setUnits(units.filter(u => u.id !== id));
-    if (activeUnitInDetail === id) setActiveUnitInDetail(null);
-  };
-
-  const deleteActivity = (id: string) => {
-    setActivities(activities.filter(a => a.id !== id));
-  };
-
-  const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
-  const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
-
-  // Sync changes back to the main modules list
+  // Load programs from localStorage on startup
   useEffect(() => {
-    if (showDetailModal && selectedModule) {
-      setModules(prev => prev.map(m => 
-        m.codModule === selectedModule.codModule 
-          ? { ...m, ...selectedModule, units, activities } 
-          : m
-      ));
+    const saved = localStorage.getItem('eduplan_academic_programs');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const names = parsed.map((p: any) => p.nombre);
+          setProgramsList(names);
+          return;
+        }
+      } catch (e) {
+        // Fallback
+      }
     }
-  }, [selectedModule, units, activities, showDetailModal]);
+    const defaultNames = [
+      'Análisis de Sistemas',
+      'Ingeniería de Sistemas',
+      'Bases de Datos Avanzadas',
+      'Diseño UX/UI Avanzado'
+    ];
+    setProgramsList(defaultNames);
+  }, []);
+
+  const resetForm = () => {
+    setGeneralForm({
+      codModule: '',
+      nombre: '',
+      totalHoraReloj: 0,
+      totalHoraAcademic: 0,
+      cantidadUnidades: 0,
+      carrera: programsList[0] || 'Análisis de Sistemas',
+      planningFileName: ''
+    });
+    setTempUnits([]);
+    resetUnitSubForm();
+    setCurrentStep(1);
+    setIsEditMode(false);
+    setSelectedModule(null);
+  };
+
+  const resetUnitSubForm = () => {
+    setUnitForm({
+      codUnit: '',
+      nombre: '',
+      totalHoraAcademic: 0,
+      totalHoraReloj: 0,
+      ponderacion: 0
+    });
+    setEditingUnitIndex(null);
+  };
+
+  const handleOpenAddModal = () => {
+    resetForm();
+    setIsEditMode(false);
+    setShowFormModal(true);
+  };
+
+  const handleOpenEditModal = (module: any) => {
+    setSelectedModule(module);
+    setIsEditMode(true);
+    setGeneralForm({
+      codModule: module.codModule,
+      nombre: module.nombre,
+      totalHoraReloj: module.totalHoraReloj || 0,
+      totalHoraAcademic: module.totalHoraAcademic || 0,
+      cantidadUnidades: module.cantidadUnidades || 0,
+      carrera: module.carrera || programsList[0] || 'Análisis de Sistemas',
+      planningFileName: module.planningFileName || ''
+    });
+    setTempUnits(module.units ? [...module.units] : []);
+    resetUnitSubForm();
+    setCurrentStep(1);
+    setShowFormModal(true);
+  };
+
+  const handleOpenDeleteModal = (module: any) => {
+    setModuleToDelete(module);
+    setIsDeleteModalOpen(true);
+  };
+
+  // Step Navigations
+  const goToStep2 = () => {
+    if (!generalForm.codModule.trim() || !generalForm.nombre.trim() || !generalForm.carrera) {
+      showToast('Por favor, complete los campos obligatorios del módulo.', 'danger');
+      return;
+    }
+    // Check if code matches any other existing module when in add mode
+    if (!isEditMode && modules.some(m => m.codModule.toLowerCase() === generalForm.codModule.trim().toLowerCase())) {
+      showToast('El código de módulo ingresado ya existe.', 'danger');
+      return;
+    }
+    // Check if code matches another module code on edit mode
+    if (isEditMode && selectedModule && generalForm.codModule.trim().toLowerCase() !== selectedModule.codModule.toLowerCase() &&
+        modules.some(m => m.codModule.toLowerCase() === generalForm.codModule.trim().toLowerCase())) {
+      showToast('El código de módulo ingresado ya pertenece a otro módulo.', 'danger');
+      return;
+    }
+
+    setCurrentStep(2);
+  };
+
+  const goToStep1 = () => {
+    setCurrentStep(1);
+  };
+
+  // Drag & drop file upload event handlers for Module Form (Step 1)
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      setGeneralForm(prev => ({ ...prev, planningFileName: file.name }));
+      showToast(`Archivo "${file.name}" cargado correctamente`, 'success');
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
+      const file = e.target.files[0];
+      setGeneralForm(prev => ({ ...prev, planningFileName: file.name }));
+      showToast(`Archivo "${file.name}" seleccionado correctamente`, 'success');
     }
   };
 
-  const simulateImport = () => {
-    setIsProcessing(true);
-    setTimeout(() => {
-      // Mock data extracted from the provided PDF "Planeación Didáctica"
-      setModuleForm({
-        nombre: 'Infraestructura de red',
-        codModule: 'MF 180_2',
-        carrera: 'Técnico General en Computación',
-        horaAcademic: 96,
-        horaReloj: 72
+  const triggerFileSelect = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleAddOrUpdateUnit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!unitForm.codUnit.trim() || !unitForm.nombre.trim()) {
+      showToast('Por favor ingrese al menos el código y nombre de la unidad didáctica.', 'danger');
+      return;
+    }
+
+    const currentUnitData: DidacticUnit = {
+      codUnit: unitForm.codUnit.trim(),
+      nombre: unitForm.nombre.trim(),
+      totalHoraAcademic: Number(unitForm.totalHoraAcademic),
+      totalHoraReloj: Number(unitForm.totalHoraReloj),
+      ponderacion: Number(unitForm.ponderacion)
+    };
+
+    if (editingUnitIndex !== null) {
+      // Edit mode of a sub-unit
+      setTempUnits(prev => {
+        const copy = [...prev];
+        copy[editingUnitIndex] = currentUnitData;
+        return copy;
       });
-      
-      const importedUnits = [
-        { id: '1', nombre: 'Elementos Básicos de Redes', hr: 12, ha: 16, ponderacion: 15 },
-        { id: '2', nombre: 'Modelos de Comunicación', hr: 12, ha: 16, ponderacion: 15 },
-        { id: '3', nombre: 'Protocolos de Comunicación', hr: 15, ha: 20, ponderacion: 30 },
-        { id: '4', nombre: 'Configuración de Componentes de red', hr: 33, ha: 44, ponderacion: 40 }
-      ];
-      setUnits(importedUnits);
-      
-      setActivities([
-        { id: '1', unitId: '1', desc: 'A0: Presentación del docente, estudiante y módulo formativo', hr: 1, ha: 1 },
-        { id: '2', unitId: '1', desc: 'A1: Clasificación de las redes según su cobertura', hr: 2, ha: 3 },
-        { id: '3', unitId: '1', desc: 'A2: Identificación de la topologías de la red', hr: 3, ha: 4 },
-        { id: '4', unitId: '1', desc: 'A3: Identificación de los dispositivos de conexiones de la red', hr: 6, ha: 8 },
-        { id: '5', unitId: '2', desc: 'A1: Identificación de la arquitectura de los modelos OSI y TCP/IP', hr: 2, ha: 3 },
-        { id: '6', unitId: '2', desc: 'A2: Identificación de las capas inferiores del modelo OSI', hr: 2, ha: 3 }
-      ]);
+      showToast('Unidad didáctica modificada en la lista', 'success');
+    } else {
+      // Create mode
+      if (tempUnits.some(u => u.codUnit.toLowerCase() === currentUnitData.codUnit.toLowerCase())) {
+        showToast('Ya existe una unidad didáctica con ese código en este módulo.', 'danger');
+        return;
+      }
+      setTempUnits(prev => [...prev, currentUnitData]);
+      showToast('Unidad didáctica añadida a la lista', 'success');
+    }
 
-      setIsProcessing(false);
-      setCreationTab('manual');
-      setStep(1); // Return to manual steps to allow review
-    }, 2000);
+    resetUnitSubForm();
   };
 
-  const handleFinalize = () => {
-    setIsProcessing(true);
-    setTimeout(() => {
-      // Create new module object
-      const newModule = {
-        codModule: moduleForm.codModule || `MOD-00${modules.length + 1}`,
-        nombre: moduleForm.nombre || 'Nuevo Módulo',
-        totalHoraAcademic: moduleForm.horaAcademic,
-        totalHoraReloj: moduleForm.horaReloj || Math.floor(moduleForm.horaAcademic * 0.8),
-        carrera: moduleForm.carrera,
-        fechaCreacion: new Date().toISOString().split('T')[0]
-      };
-
-      setModules([newModule, ...modules]); // Prepend new module
-      setIsProcessing(false);
-      setIsSuccess(true);
-      
-      setTimeout(() => {
-        closeModal();
-      }, 1500);
-    }, 1000);
+  const handleDeleteTempUnit = (index: number) => {
+    setTempUnits(prev => prev.filter((_, i) => i !== index));
+    showToast('Unidad eliminada', 'info');
+    if (editingUnitIndex === index) {
+      resetUnitSubForm();
+    }
   };
 
-  const closeModal = () => {
-    setShowAddModal(false);
-    setStep(1);
-    setSelectedFile(null);
-    setCreationTab('manual');
-    setIsSuccess(false);
-    // Reset form
-    setModuleForm({
-      nombre: '',
-      codModule: '',
-      carrera: 'Ing. Sistemas',
-      horaAcademic: 0,
-      horaReloj: 0
+  const handleEditTempUnit = (index: number) => {
+    const unit = tempUnits[index];
+    setUnitForm({
+      codUnit: unit.codUnit,
+      nombre: unit.nombre,
+      totalHoraAcademic: unit.totalHoraAcademic,
+      totalHoraReloj: unit.totalHoraReloj,
+      ponderacion: unit.ponderacion
     });
-    setUnits([{ id: '1', nombre: '', hr: 0, ha: 0, ponderacion: 0 }]);
-    setActivities([{ id: '1', unitId: '1', desc: '', hr: 0, ha: 0 }]);
+    setEditingUnitIndex(index);
+  };
+
+  const handleSaveWholeModule = () => {
+    // Collect the final whole module properties
+    const finalModule = {
+      codModule: generalForm.codModule.trim(),
+      nombre: generalForm.nombre.trim(),
+      totalHoraReloj: Number(generalForm.totalHoraReloj),
+      totalHoraAcademic: Number(generalForm.totalHoraAcademic),
+      cantidadUnidades: tempUnits.length > 0 ? tempUnits.length : Number(generalForm.cantidadUnidades),
+      carrera: generalForm.carrera,
+      fechaCreacion: isEditMode && selectedModule ? selectedModule.fechaCreacion : new Date().toISOString().split('T')[0],
+      planningFileName: generalForm.planningFileName || '',
+      units: tempUnits
+    };
+
+    if (isEditMode && selectedModule) {
+      // Edit Module in state
+      setModules(prev => prev.map(m => 
+        m.codModule === selectedModule.codModule ? finalModule : m
+      ));
+      showToast('Módulo formativo y planificación guardados con éxito.', 'success');
+    } else {
+      // New Module in State
+      setModules(prev => [finalModule, ...prev]);
+      showToast('Módulo formativo con unidades didácticas creado.', 'success');
+    }
+
+    setShowFormModal(false);
+    resetForm();
+  };
+
+  const handleDeleteModule = () => {
+    setModules(prev => prev.filter(m => m.codModule !== moduleToDelete.codModule));
+    showToast('Módulo eliminado con éxito.', 'success');
+    setIsDeleteModalOpen(false);
+    setModuleToDelete(null);
+  };
+
+  // Aggregated units metrics
+  const totalTempHoursAcademic = tempUnits.reduce((acc, u) => acc + u.totalHoraAcademic, 0);
+  const totalTempHoursReloj = tempUnits.reduce((acc, u) => acc + u.totalHoraReloj, 0);
+  const totalTempPonderacion = tempUnits.reduce((acc, u) => acc + u.ponderacion, 0);
+
+  const filteredModules = modules.filter(m => 
+    m.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    m.codModule.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    m.carrera.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const toggleExpandModule = (codModule: string) => {
+    setExpandedModules(prev => ({
+      ...prev,
+      [codModule]: !prev[codModule]
+    }));
   };
 
   return (
@@ -161,10 +357,10 @@ const Modules: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-display font-bold text-slate-800">Módulos Formativos</h1>
-          <p className="text-slate-500 mt-1">Gestión centralizada de contenidos y carga horaria</p>
+          <p className="text-slate-500 mt-1">Gestión centralizada de cargas horarias, unidades didácticas y planeaciones estructuradas</p>
         </div>
         <button 
-          onClick={() => setShowAddModal(true)}
+          onClick={handleOpenAddModal}
           className="flex items-center justify-center gap-2 px-6 py-4 bg-academic-600 hover:bg-academic-700 text-white rounded-2xl font-bold transition-all shadow-lg shadow-academic-600/20 active:scale-95 sm:w-auto"
         >
           <Plus size={20} />
@@ -173,732 +369,773 @@ const Modules: React.FC = () => {
       </div>
 
       {/* Filters Bar */}
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="relative group flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-academic-500 transition-colors" size={18} />
-          <input 
-            type="text" 
-            placeholder="Buscar módulo o carrera..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-11 pr-4 py-4 bg-white rounded-2xl border border-slate-100 shadow-sm focus:ring-2 focus:ring-academic-500 transition-all font-medium outline-none"
-          />
-        </div>
-        <button className="flex items-center gap-2 px-5 py-4 bg-white rounded-2xl border border-slate-100 shadow-sm text-slate-600 font-bold hover:bg-slate-50 transition-all">
-          <Filter size={18} />
-          <span>Filtros</span>
-        </button>
+      <div className="relative group max-w-xl">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-academic-500 transition-colors" size={18} />
+        <input 
+          type="text" 
+          placeholder="Buscar módulo por código, nombre o programa..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full pl-11 pr-4 py-4 bg-white rounded-2xl border border-slate-100 shadow-sm focus:ring-2 focus:ring-academic-500 transition-all font-medium outline-none text-slate-700"
+        />
       </div>
 
+      {/* Empty State */}
+      {filteredModules.length === 0 && (
+        <div className="bg-white rounded-3xl border border-slate-100 p-16 text-center space-y-4 max-w-lg mx-auto shadow-sm">
+          <Layers size={48} className="text-slate-300 mx-auto" />
+          <h3 className="text-lg font-black text-slate-700 uppercase tracking-tight">No se encontraron módulos</h3>
+          <p className="text-xs text-slate-400 font-semibold leading-relaxed">
+            Intente cambiar los términos de búsqueda o cree un nuevo módulo formativo utilizando el botón correspondiente en la parte superior.
+          </p>
+        </div>
+      )}
+
       {/* Modules Grid */}
-      <div className="grid md:grid-cols-2 gap-6">
-        {modules.filter(m => 
-          m.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || 
-          m.carrera.toLowerCase().includes(searchTerm.toLowerCase())
-        ).map((module, idx) => (
-          <motion.div
-            key={module.codModule}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.05 }}
-            className="group bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:border-academic-100 transition-all overflow-hidden flex flex-col h-full"
-          >
-            <div className="p-6 flex-1 space-y-5">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <span className="text-[10px] font-black text-academic-500 uppercase tracking-widest block mb-1">{module.codModule}</span>
-                  <h3 className="text-lg font-black text-slate-800 leading-tight group-hover:text-academic-600 transition-colors uppercase tracking-tight">
-                    {module.nombre}
-                  </h3>
+      <div className="grid md:grid-cols-2 gap-6 items-start">
+        {filteredModules.map((module, idx) => {
+          const isExpanded = !!expandedModules[module.codModule];
+          const unitCount = module.units?.length || 0;
+          return (
+            <motion.div
+              key={module.codModule}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.04 }}
+              className="group bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-md hover:border-academic-100 transition-all overflow-hidden flex flex-col"
+            >
+              <div className="p-6 space-y-4">
+                {/* Header: Code & Actions */}
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[10px] font-black text-academic-700 bg-academic-50 border border-academic-100/50 px-2 py-0.5 rounded-lg uppercase tracking-wider inline-block mb-1.5">
+                      {module.codModule}
+                    </span>
+                    <h3 className="text-lg font-black text-slate-800 leading-tight group-hover:text-academic-600 transition-colors uppercase tracking-tight">
+                      {module.nombre}
+                    </h3>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => handleOpenEditModal(module)}
+                      className="p-1.5 text-slate-400 hover:text-academic-600 hover:bg-slate-50 border border-transparent hover:border-slate-100 rounded-xl transition-all"
+                      title="Editar Módulo"
+                    >
+                      <Edit2 size={14} />
+                    </button>
+                    <button
+                      onClick={() => handleOpenDeleteModal(module)}
+                      className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 border border-transparent hover:border-rose-100 rounded-xl transition-all"
+                      title="Eliminar Módulo"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </div>
-                <div className="shrink-0 p-2.5 text-slate-300 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-all cursor-pointer border border-transparent hover:border-slate-100">
-                  <MoreHorizontal size={18} />
+
+                {/* Belonging Program / Carrera */}
+                <div className="flex flex-col gap-2">
+                  <div className="px-3.5 py-2 bg-slate-50 rounded-2xl border border-slate-100/55 flex items-center gap-2 w-full">
+                    <GraduationCap size={15} className="text-academic-500 shrink-0" />
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight truncate">
+                      Programa: <span className="text-slate-800 font-extrabold">{module.carrera}</span>
+                    </span>
+                  </div>
+                  {module.planningFileName && (
+                    <div className="px-3.5 py-1.5 bg-emerald-50/80 rounded-2xl border border-emerald-100 flex items-center gap-2 w-full">
+                      <FileCheck size={14} className="text-emerald-600 shrink-0" />
+                      <span className="text-[10px] font-black text-emerald-800 uppercase tracking-tight truncate flex items-center gap-1">
+                        Planeación: <span className="text-emerald-950 font-bold normal-case select-all">{module.planningFileName}</span>
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Metrics Grid */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="p-3.5 bg-slate-50/50 rounded-2xl border border-slate-100/50 flex flex-col gap-1 hover:bg-white hover:shadow-sm transition-all text-center">
+                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider block">Horas Acad.</span>
+                    <div className="flex items-baseline justify-center gap-0.5">
+                      <span className="text-base font-black text-slate-800">{module.totalHoraAcademic}</span>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase">ha</span>
+                    </div>
+                  </div>
+                  
+                  <div className="p-3.5 bg-slate-50/50 rounded-2xl border border-slate-100/50 flex flex-col gap-1 hover:bg-white hover:shadow-sm transition-all text-center">
+                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider block">Horas Reloj</span>
+                    <div className="flex items-baseline justify-center gap-0.5">
+                      <span className="text-base font-black text-slate-800">{module.totalHoraReloj}</span>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase">hr</span>
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 bg-slate-50/50 rounded-2xl border border-slate-100/50 flex flex-col gap-1 hover:bg-white hover:shadow-sm transition-all text-center">
+                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider block">Unidades</span>
+                    <div className="flex items-baseline justify-center gap-0.5">
+                      <span className="text-base font-black text-slate-800">{module.cantidadUnidades || unitCount || 0}</span>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase">uds</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <div className="px-3 py-1.5 bg-slate-50 rounded-xl border border-slate-100/50 flex items-center gap-2">
-                  <GraduationCap size={14} className="text-academic-600" />
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight truncate max-w-[150px]">
-                    {module.carrera}
+              {/* Accordion / Expandable Units List */}
+              <div className="border-t border-slate-100 bg-slate-50/40">
+                <button
+                  type="button"
+                  onClick={() => toggleExpandModule(module.codModule)}
+                  className="w-full px-6 py-3 flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-slate-500 hover:bg-slate-50 transition-all"
+                >
+                  <span className="flex items-center gap-1.5 text-academic-700">
+                    <Layers size={13} />
+                    Unidades Didácticas ({unitCount})
+                  </span>
+                  {isExpanded ? <ChevronUp size={14} className="text-slate-400" /> : <ChevronDown size={14} className="text-slate-400" />}
+                </button>
+
+                <AnimatePresence initial={false}>
+                  {isExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden bg-slate-50 border-t border-slate-100"
+                    >
+                      <div className="p-4 space-y-3">
+                        {unitCount === 0 ? (
+                          <p className="text-[10px] font-bold text-slate-400 italic text-center py-2">
+                           No hay unidades didácticas agregadas a este módulo.
+                          </p>
+                        ) : (
+                          module.units?.map((unit, uIdx) => (
+                            <div 
+                              key={unit.codUnit || uIdx} 
+                              className="bg-white border border-slate-200/60 rounded-2xl p-3.5 space-y-2.5 shadow-sm"
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div>
+                                  <span className="text-[8px] font-mono font-bold bg-slate-100 border border-slate-200 text-slate-500 px-1.5 py-0.5 rounded uppercase">
+                                    {unit.codUnit}
+                                  </span>
+                                  <h4 className="text-xs font-black text-slate-800 leading-tight mt-1">
+                                    {unit.nombre}
+                                  </h4>
+                                </div>
+                                <span className="text-[10px] font-black text-academic-700 bg-academic-50 border border-academic-100 px-2 py-0.5 rounded-lg shrink-0">
+                                  {unit.ponderacion}%
+                                </span>
+                              </div>
+
+                              <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-dashed border-slate-100">
+                                <div className="flex gap-4">
+                                  <div className="flex items-center gap-1 text-[10px] text-slate-500 font-semibold">
+                                    <Clock size={11} className="text-slate-400" />
+                                    <span>{unit.totalHoraAcademic}h Acad.</span>
+                                  </div>
+                                  <div className="flex items-center gap-1 text-[10px] text-slate-500 font-semibold">
+                                    <Clock size={11} className="text-slate-400" />
+                                    <span>{unit.totalHoraReloj}h Reloj</span>
+                                  </div>
+                                </div>
+
+                                {unit.planningFileName && (
+                                  <div className="flex items-center gap-1 bg-emerald-50 border border-emerald-100 px-2 py-1 rounded-xl text-[9px] font-bold text-emerald-800">
+                                    <FileText size={11} className="text-emerald-600" />
+                                    <span className="max-w-[120px] truncate" title={unit.planningFileName}>
+                                      {unit.planningFileName}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {/* Main Module Dialog Form (With Stepper Control) */}
+      <AnimatePresence>
+        {showFormModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setShowFormModal(false);
+                resetForm();
+              }}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            />
+            
+            <motion.div
+              initial={{ opacity: 0, y: 30, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.98 }}
+              className="relative w-full max-w-4xl bg-white rounded-2xl sm:rounded-3xl border border-slate-200 p-4 sm:p-6 md:p-8 shadow-2xl flex flex-col my-2 sm:my-8 max-h-[94vh] sm:max-h-[85vh] overflow-y-auto overflow-x-hidden"
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-slate-100">
+                <div className="pr-4">
+                  <h3 className="text-base sm:text-lg font-black text-slate-800 uppercase tracking-tight">
+                    {isEditMode ? 'Editar Módulo' : 'Crear Módulo Formativo'}
+                  </h3>
+                  <p className="text-[10px] sm:text-[11px] text-slate-400 font-semibold mt-0.5 leading-normal">
+                    Modo Stepper: Complete la información básica y luego configure las unidades didácticas.
+                  </p>
+                </div>
+                <button 
+                  onClick={() => {
+                    setShowFormModal(false);
+                    resetForm();
+                  }} 
+                  className="p-1.5 hover:bg-slate-100 rounded-xl transition-colors text-slate-400 shrink-0"
+                >
+                  <X size={18} className="sm:hidden" />
+                  <X size={20} className="hidden sm:block" />
+                </button>
+              </div>
+
+              {/* Stepper Steps Bar Indicator */}
+              <div className="flex items-center justify-center gap-1.5 sm:gap-4 py-3 sm:py-4 mb-1 sm:mb-2 border-b border-slate-50">
+                <div 
+                  onClick={() => currentStep === 2 && goToStep1()}
+                  className={cn(
+                    "flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-tight transition-all cursor-pointer",
+                    currentStep === 1 
+                      ? "bg-academic-600 text-white" 
+                      : "bg-slate-105 text-slate-500 hover:text-slate-800"
+                  )}
+                >
+                  <span className={cn(
+                    "w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center rounded-full text-[9px] sm:text-[10px] font-bold border",
+                    currentStep === 1 ? "border-white bg-academic-700" : "border-slate-300 bg-white"
+                  )}>1</span>
+                  <span>
+                    <span className="hidden sm:inline">Datos del Módulo</span>
+                    <span className="sm:hidden">Datos</span>
+                  </span>
+                </div>
+                
+                <div className="h-px w-6 sm:h-px sm:w-8 bg-slate-200" />
+
+                <div 
+                  onClick={() => currentStep === 1 && goToStep2()}
+                  className={cn(
+                    "flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-tight transition-all cursor-pointer",
+                    currentStep === 2 
+                      ? "bg-academic-600 text-white" 
+                      : "bg-slate-105 text-slate-500 hover:text-slate-800"
+                  )}
+                >
+                  <span className={cn(
+                    "w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center rounded-full text-[9px] sm:text-[10px] font-bold border",
+                    currentStep === 2 ? "border-white bg-academic-700" : "border-slate-300 bg-white"
+                  )}>2</span>
+                  <span>
+                    <span className="hidden sm:inline">Unidades Didácticas</span>
+                    <span className="sm:hidden">Unidades</span>
                   </span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100/50 flex flex-col gap-1 transition-all group-hover:bg-white group-hover:shadow-sm">
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Horas Acad.</span>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-lg font-black text-slate-800">{module.totalHoraAcademic}</span>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">ha</span>
-                  </div>
-                </div>
-                <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100/50 flex flex-col gap-1 transition-all group-hover:bg-white group-hover:shadow-sm">
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Horas Reloj</span>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-lg font-black text-slate-800">{module.totalHoraReloj}</span>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">hr</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-3 border-t border-slate-50">
-                <div className="flex -space-x-2">
-                  {[1, 2, 3].map(i => (
-                    <div key={i} className="w-7 h-7 rounded-full bg-white border-2 border-slate-50 flex items-center justify-center text-[9px] font-black text-slate-400 shadow-sm group-hover:border-academic-50 transition-colors">
-                      U{i}
-                    </div>
-                  ))}
-                  <div className="w-7 h-7 rounded-full bg-academic-600 border-2 border-slate-50 flex items-center justify-center text-[9px] font-black text-white shadow-md">
-                    UDs
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5 px-2 py-1 bg-indigo-50/50 rounded-lg text-[9px] font-black text-indigo-400 uppercase tracking-widest italic border border-indigo-50">
-                  <Clock size={10} />
-                  Plan {module.fechaCreacion || '24'}
-                </div>
-              </div>
-            </div>
-
-            <button 
-              onClick={() => {
-                setSelectedModule(module);
-                setShowDetailModal(true);
-                if (module.units && module.units.length > 0) {
-                  setUnits(module.units);
-                  setActivities(module.activities || []);
-                  setActiveUnitInDetail(module.units[0].id);
-                } else {
-                  const initialUnits = [
-                    { id: '1', nombre: 'Unidad 1: Fundamentos', hr: 12, ha: 16, ponderacion: 20 },
-                    { id: '2', nombre: 'Unidad 2: Desarrollo', hr: 18, ha: 24, ponderacion: 30 }
-                  ];
-                  setUnits(initialUnits);
-                  setActivities([]);
-                  setActiveUnitInDetail('1');
-                }
-              }}
-              className="w-full py-4 bg-slate-50 text-slate-500 font-bold text-[10px] uppercase tracking-widest hover:bg-academic-600 hover:text-white transition-all flex items-center justify-center gap-2 border-t border-slate-100"
-            >
-              Gestionar Unidades
-              <ChevronRight size={14} />
-            </button>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* Add Module Modal - MultiStep Stepper */}
-      <AnimatePresence>
-        {showAddModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={closeModal}
-              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ opacity: 0, y: 50, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 50, scale: 0.95 }}
-              className="relative w-full max-w-4xl bg-white rounded-[3rem] shadow-2xl overflow-hidden shadow-slate-900/20"
-            >
-              <div className="p-8 md:p-12">
-                <div className="flex items-center justify-between mb-10">
-                  <div>
-                    <h2 className="text-2xl font-bold text-slate-800">Plan de Módulo Académico</h2>
-                    <p className="text-slate-400 text-sm mt-1">Completa los pasos para generar la estructura didáctica</p>
-                  </div>
-                  <button onClick={closeModal} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
-                    <X className="text-slate-400" size={24} />
-                  </button>
-                </div>
-
-                {isSuccess ? (
-                  <div className="flex flex-col items-center justify-center py-20 animate-in zoom-in-95 duration-500">
-                    <div className="w-24 h-24 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-6">
-                      <CheckCircle2 size={48} />
-                    </div>
-                    <h2 className="text-3xl font-bold text-slate-800">¡Módulo Creado!</h2>
-                    <p className="text-slate-500 mt-2">La planeación ha sido registrada correctamente.</p>
-                  </div>
-                ) : (
-                  <>
-                    {/* Step Indicators */}
-                    <div className="flex items-center justify-between mb-12 relative px-4">
-                      <div className="absolute top-5 left-8 right-8 h-0.5 bg-slate-100 -z-0" />
-                      {[
-                        { s: 1, l: 'Módulo' },
-                        { s: 2, l: 'Unidades (UD)' },
-                        { s: 3, l: 'Actividades' }
-                      ].map((item) => (
-                        <div key={item.s} className="flex flex-col items-center relative z-10">
-                          <div className={cn(
-                            "w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all border-4 border-white",
-                            step >= item.s ? "bg-academic-600 text-white shadow-lg shadow-academic-600/30" : "bg-slate-100 text-slate-400"
-                          )}>
-                            {step > item.s ? <CheckCircle2 size={18} /> : item.s}
-                          </div>
-                          <span className={cn(
-                            "mt-2 text-[10px] font-bold uppercase tracking-wider",
-                            step >= item.s ? "text-academic-600" : "text-slate-400"
-                          )}>{item.l}</span>
-                        </div>
-                      ))}
-                    </div>
-                    
-                    {/* Step 1: Module Info */}
-                    {step === 1 && (
-                      <div className="space-y-8 animate-in slide-in-from-bottom-5 duration-300">
-                        <div className="flex gap-2 p-1.5 bg-slate-100/50 w-full rounded-2xl">
-                          <button 
-                            onClick={() => setCreationTab('manual')}
-                            className={cn(
-                              "flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm transition-all",
-                              creationTab === 'manual' ? "bg-white text-academic-600 shadow-sm" : "text-slate-400 h-10 hover:text-slate-600"
-                            )}
-                          >
-                            <FileSignature size={18} />
-                            Registro Manual
-                          </button>
-                          <button 
-                            onClick={() => setCreationTab('upload')}
-                            className={cn(
-                              "flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm transition-all",
-                              creationTab === 'upload' ? "bg-white text-academic-600 shadow-sm" : "text-slate-400 h-10 hover:text-slate-600"
-                            )}
-                          >
-                            <Upload size={18} />
-                            Importar PDF
-                          </button>
-                        </div>
-
-                        {creationTab === 'manual' ? (
-                          <div className="grid md:grid-cols-2 gap-6">
-                            <div className="md:col-span-2">
-                              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">Nombre del Módulo</label>
-                              <input 
-                                type="text" 
-                                value={moduleForm.nombre}
-                                onChange={(e) => setModuleForm({ ...moduleForm, nombre: e.target.value })}
-                                className="w-full px-5 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-academic-600 outline-none font-medium text-slate-700" 
-                                placeholder="Ej: Infraestructura de red" 
-                              />
-                            </div>
-                            <div>
-                              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">Código</label>
-                              <input 
-                                type="text" 
-                                value={moduleForm.codModule}
-                                onChange={(e) => setModuleForm({ ...moduleForm, codModule: e.target.value })}
-                                className="w-full px-5 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-academic-600 outline-none font-medium text-slate-700" 
-                                placeholder="MF 180_2" 
-                              />
-                            </div>
-                            <div>
-                              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">Carga Horaria H/A</label>
-                              <input 
-                                type="number" 
-                                value={moduleForm.horaAcademic}
-                                onChange={(e) => setModuleForm({ ...moduleForm, horaAcademic: Number(e.target.value) })}
-                                className="w-full px-5 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-academic-600 outline-none font-medium text-slate-700" 
-                              />
-                            </div>
-                            <div>
-                              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">Carrera / Programa</label>
-                              <select 
-                                value={moduleForm.carrera}
-                                onChange={(e) => setModuleForm({ ...moduleForm, carrera: e.target.value })}
-                                className="w-full px-5 py-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-academic-600 outline-none font-medium text-slate-700 appearance-none shadow-inner"
-                              >
-                                <option value="Análisis de Sistemas">Análisis de Sistemas</option>
-                                <option value="Ingeniería de Sistemas">Ingeniería de Sistemas</option>
-                                <option value="Arquitectura de Redes">Arquitectura de Redes</option>
-                                <option value="Ciberseguridad">Ciberseguridad</option>
-                                <option value="Técnico General en Computación">Técnico General en Computación</option>
-                              </select>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="h-64 border-2 border-dashed border-slate-200 rounded-[2rem] flex flex-col items-center justify-center p-8 text-center cursor-pointer hover:border-academic-500 hover:bg-academic-50 transition-all font-bold" onClick={() => document.getElementById('file-pdf')?.click()}>
-                            <input id="file-pdf" type="file" className="hidden" accept=".pdf" onChange={handleFileChange} />
-                            {selectedFile ? (
-                              <>
-                                <FileText size={48} className="text-academic-500 mb-4" />
-                                <h4 className="font-bold text-slate-800">{selectedFile.name}</h4>
-                                <button onClick={(e) => { e.stopPropagation(); simulateImport(); }} disabled={isProcessing} className="mt-4 px-8 py-3 bg-academic-600 text-white rounded-xl font-bold flex items-center gap-2">
-                                  {isProcessing && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-                                  {isProcessing ? 'Procesando...' : 'Confirmar Importación'}
-                                </button>
-                              </>
-                            ) : (
-                              <>
-                                <Upload size={48} className="text-slate-200 mb-4" />
-                                <h4 className="font-bold text-slate-400">Suelta tu planeación PDF aquí</h4>
-                              </>
-                            )}
-                          </div>
-                        )}
+              {/* STEPPER CONTENT CONTAINER */}
+              <div className="flex-1 min-h-[250px] sm:min-h-[300px]">
+                
+                {/* STEP 1: GENERAL DATA */}
+                {currentStep === 1 && (
+                  <div className="space-y-4 py-2 animate-in fade-in slide-in-from-left duration-200">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                      {/* Código del Módulo */}
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1 sm:mb-1.5">Código del Módulo *</label>
+                        <input 
+                          type="text" 
+                          required
+                          placeholder="Ej: MOD-003, MF_SO"
+                          value={generalForm.codModule}
+                          onChange={(e) => setGeneralForm({ ...generalForm, codModule: e.target.value })}
+                          className="w-full px-3.5 py-2.5 sm:px-4 sm:py-3 bg-slate-50 border border-slate-250 rounded-xl font-bold text-xs text-slate-705 outline-academic-500 focus:bg-white transition-all shadow-inner"
+                        />
                       </div>
-                    )}
 
-                    {/* Step 2: Units */}
-                    {step === 2 && (
-                      <div className="space-y-6 animate-in slide-in-from-right-5 duration-300 max-h-[50vh] overflow-y-auto pr-2 scrollbar-hide">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-lg font-bold text-slate-700">Listado de Unidades (UD)</h3>
-                          <button onClick={addUnit} className="text-academic-600 font-bold text-sm flex items-center gap-1 hover:underline">
-                            <Plus size={16} /> Agregar Unidad
-                          </button>
-                        </div>
-                        {units.map((unit, idx) => (
-                          <div key={unit.id} className="p-6 bg-slate-50 rounded-3xl border border-slate-100 grid grid-cols-1 md:grid-cols-4 gap-4 relative">
-                            <div className="md:col-span-2">
-                              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">UD {idx + 1}: Denominación</label>
-                              <input 
-                                type="text" 
-                                value={unit.nombre}
-                                onChange={(e) => {
-                                  const newUnits = [...units];
-                                  newUnits[idx].nombre = e.target.value;
-                                  setUnits(newUnits);
-                                }}
-                                className="w-full p-3 bg-white rounded-xl border-none focus:ring-1 focus:ring-academic-500 text-sm font-bold text-slate-700" 
-                                placeholder="Ej: Elementos Básicos de Redes"
-                              />
-                            </div>
-                            <div>
-                              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">H/R</label>
-                              <input 
-                                type="number" 
-                                value={unit.hr}
-                                onChange={(e) => {
-                                  const newUnits = [...units];
-                                  newUnits[idx].hr = Number(e.target.value);
-                                  setUnits(newUnits);
-                                }}
-                                className="w-full p-3 bg-white rounded-xl border-none focus:ring-1 focus:ring-academic-500 text-sm font-bold text-slate-700" 
-                              />
-                            </div>
-                            <div>
-                              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Ponderación %</label>
-                              <input 
-                                type="number" 
-                                value={unit.ponderacion}
-                                onChange={(e) => {
-                                  const newUnits = [...units];
-                                  newUnits[idx].ponderacion = Number(e.target.value);
-                                  setUnits(newUnits);
-                                }}
-                                className="w-full p-3 bg-white rounded-xl border-none focus:ring-1 focus:ring-academic-500 text-sm font-bold text-slate-700" 
-                              />
-                            </div>
-                          </div>
+                      {/* Nombre del Módulo */}
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1 sm:mb-1.5">Nombre del Módulo *</label>
+                        <input 
+                          type="text" 
+                          required
+                          placeholder="Ej: Análisis y Diseño Orientado a Objetos"
+                          value={generalForm.nombre}
+                          onChange={(e) => setGeneralForm({ ...generalForm, nombre: e.target.value })}
+                          className="w-full px-3.5 py-2.5 sm:px-4 sm:py-3 bg-slate-50 border border-slate-250 rounded-xl font-bold text-xs text-slate-705 outline-academic-500 focus:bg-white transition-all shadow-inner"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Programa select */}
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1 sm:mb-1.5">Programa al que pertenece *</label>
+                      <select 
+                        value={generalForm.carrera}
+                        onChange={(e) => setGeneralForm({ ...generalForm, carrera: e.target.value })}
+                        className="w-full px-3.5 py-2.5 sm:px-4 sm:py-3 bg-slate-50 border border-slate-250 rounded-xl font-bold text-xs text-slate-705 outline-academic-500 focus:bg-white transition-all shadow-inner appearance-none cursor-pointer"
+                      >
+                        {programsList.map(pName => (
+                          <option key={pName} value={pName}>{pName}</option>
                         ))}
-                      </div>
-                    )}
+                      </select>
+                    </div>
 
-                    {/* Step 3: Activities */}
-                    {step === 3 && (
-                      <div className="space-y-6 animate-in slide-in-from-right-5 duration-300 max-h-[50vh] overflow-y-auto pr-2">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-lg font-bold text-slate-700">Actividades de Aprendizaje</h3>
-                          <button onClick={addActivity} className="text-academic-600 font-bold text-sm flex items-center gap-1 hover:underline">
-                            <Plus size={16} /> Nueva Actividad
+                    {/* Hours and counts */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                      <div>
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-tight block mb-1 sm:mb-1.5">Horas Académicas *</label>
+                        <input 
+                          type="number" 
+                          min="0"
+                          value={generalForm.totalHoraAcademic === 0 ? '' : generalForm.totalHoraAcademic}
+                          onChange={(e) => setGeneralForm({ ...generalForm, totalHoraAcademic: Math.max(0, parseInt(e.target.value) || 0) })}
+                          className="w-full px-3.5 py-2.5 sm:py-3 bg-slate-50 border border-slate-250 rounded-xl font-black text-xs text-slate-705 outline-academic-500 focus:bg-white transition-all shadow-inner text-left sm:text-center"
+                          placeholder="Ej: 120"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-tight block mb-1 sm:mb-1.5">Horas Reloj *</label>
+                        <input 
+                          type="number" 
+                          min="0"
+                          value={generalForm.totalHoraReloj === 0 ? '' : generalForm.totalHoraReloj}
+                          onChange={(e) => setGeneralForm({ ...generalForm, totalHoraReloj: Math.max(0, parseInt(e.target.value) || 0) })}
+                          className="w-full px-3.5 py-2.5 sm:py-3 bg-slate-50 border border-slate-250 rounded-xl font-black text-xs text-slate-705 outline-academic-500 focus:bg-white transition-all shadow-inner text-left sm:text-center"
+                          placeholder="Ej: 100"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-tight block mb-1 sm:mb-1.5" title="Se auto-calculará según las unidades agregadas">Límite Unidades</label>
+                        <input 
+                          type="number" 
+                          min="0"
+                          value={tempUnits.length > 0 ? tempUnits.length : (generalForm.cantidadUnidades === 0 ? '' : generalForm.cantidadUnidades)}
+                          disabled={tempUnits.length > 0}
+                          onChange={(e) => setGeneralForm({ ...generalForm, cantidadUnidades: Math.max(0, parseInt(e.target.value) || 0) })}
+                          title={tempUnits.length > 0 ? "Se auto-calcula con el listado del paso 2" : ""}
+                          className={cn(
+                            "w-full px-3.5 py-2.5 sm:py-3 bg-slate-50 border border-slate-250 rounded-xl font-black text-xs text-slate-700 outline-academic-500 text-left sm:text-center",
+                            tempUnits.length > 0 ? "opacity-75 bg-slate-100 cursor-not-allowed" : "focus:bg-white shadow-inner"
+                          )}
+                          placeholder="Ej: 3"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 sm:p-4 bg-academic-50 border border-academic-100 rounded-xl sm:rounded-2xl flex items-start gap-2.5 sm:gap-3 mt-3.5 sm:mt-4">
+                      <GraduationCap className="text-academic-500 mt-0.5 shrink-0" size={16} />
+                      <div className="text-[10px] sm:text-[11px] leading-relaxed text-academic-800 font-semibold">
+                        <span className="font-extrabold block">Recomendación de Horas Formativas:</span>
+                        Defina de forma estimada las horas del módulo académico. Al pasar al siguiente paso, podrá registrar de forma detallada cada unidad didáctica y su ponderación porcentual del módulo.
+                      </div>
+                    </div>
+
+                    {/* Didactic Planning Upload Area (With Click and Drag-Drop capability) */}
+                    <div className="space-y-2 mt-4 bg-slate-50/50 p-4 border border-slate-150 rounded-2xl">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Planeación Didáctica del Módulo</label>
+                      
+                      <div
+                        onDragEnter={handleDrag}
+                        onDragOver={handleDrag}
+                        onDragLeave={handleDrag}
+                        onDrop={handleDrop}
+                        onClick={triggerFileSelect}
+                        className={cn(
+                          "border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-1.5",
+                          dragActive 
+                            ? "border-academic-500 bg-academic-50/50" 
+                            : "border-slate-250 hover:border-academic-500 hover:bg-slate-50 bg-white"
+                        )}
+                      >
+                        <input 
+                          ref={fileInputRef}
+                          type="file" 
+                          className="hidden" 
+                          accept=".pdf,.doc,.docx,.xls,.xlsx"
+                          onChange={handleFileChange}
+                        />
+                        
+                        <UploadCloud size={24} className="text-slate-400 shrink-0" />
+                        
+                        <div className="text-[10px] font-black uppercase text-slate-650 tracking-wide">
+                          Cargar Planeación Didáctica
+                        </div>
+                        <p className="text-[9px] text-slate-400 font-bold leading-normal">
+                          Suelte su archivo PDF, Word o Excel aquí, o haga clic para seleccionar
+                        </p>
+                      </div>
+
+                      {/* Active Planning File Tag displaying uploaded file name */}
+                      {generalForm.planningFileName && (
+                        <div className="mt-2.5 flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-150 shadow-inner">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <FileText className="text-academic-500 shrink-0" size={15} />
+                            <span className="text-[10.5px] font-black text-slate-700 truncate block">
+                              {generalForm.planningFileName}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setGeneralForm(prev => ({ ...prev, planningFileName: '' }));
+                            }}
+                            className="p-1 hover:bg-slate-105 rounded text-rose-500 hover:text-rose-600 shrink-0"
+                            title="Remover planeación"
+                          >
+                            <X size={14} />
                           </button>
                         </div>
-                        {activities.map((act, idx) => (
-                          <div key={act.id} className="p-6 bg-slate-50 border border-slate-100 rounded-3xl space-y-4">
-                            <div className="flex items-center gap-4">
-                              <div className="w-10 h-10 rounded-xl bg-academic-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
-                                A{idx + 1}
-                              </div>
-                              <div className="flex-1">
-                                <select 
-                                  value={act.unitId}
-                                  onChange={(e) => {
-                                    const newActs = [...activities];
-                                    newActs[idx].unitId = e.target.value;
-                                    setActivities(newActs);
-                                  }}
-                                  className="w-full p-3 bg-white rounded-xl border-none focus:ring-1 focus:ring-academic-500 text-sm font-bold text-slate-700"
-                                >
-                                  {units.map(u => <option key={u.id} value={u.id}>UD {u.id}: {u.nombre || 'Sin nombre'}</option>)}
-                                </select>
-                              </div>
-                            </div>
-                            <input 
-                              type="text" 
-                              value={act.desc}
-                              onChange={(e) => {
-                                const newActs = [...activities];
-                                newActs[idx].desc = e.target.value;
-                                setActivities(newActs);
-                              }}
-                              className="w-full p-3 bg-white rounded-xl border-none focus:ring-1 focus:ring-academic-500 text-sm font-medium text-slate-700" 
-                              placeholder="Descripción de la actividad"
-                            />
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="p-3 bg-white rounded-xl flex items-center justify-between">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase">Horas H/A</span>
-                                <input 
-                                  type="number" 
-                                  value={act.ha}
-                                  onChange={(e) => {
-                                    const newActs = [...activities];
-                                    newActs[idx].ha = Number(e.target.value);
-                                    setActivities(newActs);
-                                  }}
-                                  className="w-12 text-right font-bold text-academic-600 outline-none" 
-                                />
-                              </div>
-                              <div className="p-3 bg-white rounded-xl flex items-center justify-between">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase">Horas H/R</span>
-                                <input 
-                                  type="number" 
-                                  value={act.hr}
-                                  onChange={(e) => {
-                                    const newActs = [...activities];
-                                    newActs[idx].hr = Number(e.target.value);
-                                    setActivities(newActs);
-                                  }}
-                                  className="w-12 text-right font-bold text-academic-600 outline-none" 
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                      )}
+                    </div>
+
+                    {/* Step Navigation Button container */}
+                    <div className="flex justify-end pt-4 sm:pt-6 border-t border-slate-100 mt-5 sm:mt-6">
+                      <button
+                        type="button"
+                        onClick={goToStep2}
+                        className="flex items-center gap-1.5 px-4 py-2.5 sm:px-5 sm:py-3 bg-academic-600 hover:bg-academic-700 text-white rounded-xl font-black text-[9px] sm:text-[10px] uppercase tracking-widest transition-all"
+                      >
+                        Continuar
+                        <ArrowRight size={13} />
+                      </button>
+                    </div>
                   </div>
                 )}
 
-                {/* Footer Controls */}
-                <div className="mt-12 flex items-center justify-between pt-8 border-t border-slate-50">
-                  <button 
-                    onClick={() => setStep(s => Math.max(1, s - 1))}
-                    disabled={step === 1}
-                    className={cn(
-                      "px-8 py-4 rounded-2xl font-bold flex items-center gap-2 transition-all",
-                      step === 1 ? "opacity-0 pointer-events-none" : "bg-slate-50 text-slate-500 hover:bg-slate-100"
-                    )}
-                  >
-                    Anterior
-                  </button>
-                  <div className="flex items-center gap-4">
-                    {step < 3 ? (
-                      <button 
-                        onClick={() => setStep(s => s + 1)}
-                        className="px-10 py-4 bg-academic-600 text-white rounded-2xl font-bold shadow-xl shadow-academic-600/20 active:scale-[0.98] transition-all flex items-center gap-2"
+
+                {/* STEP 2: DIDACTIC UNITS OF MODULE */}
+                {currentStep === 2 && (
+                  <div className="space-y-6 py-2 animate-in fade-in slide-in-from-right duration-200">
+                    
+                    <div className="grid lg:grid-cols-12 gap-6 items-start">
+                      
+                      {/* Left Side: Create / Edit Unit Form block. (5 Columns) */}
+                      <div className="lg:col-span-5 bg-slate-50/70 border border-slate-150 rounded-xl sm:rounded-2xl p-4 sm:p-5 space-y-3.5 sm:space-y-4">
+                        <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                          {editingUnitIndex !== null ? 'Modificar Unidad' : 'Registrar Unidad Didáctica'}
+                        </h4>
+
+                        <div className="space-y-3 sm:space-y-3.5">
+                          {/* Unit Code */}
+                          <div>
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-tight block mb-1">Código de Unidad *</label>
+                            <input 
+                              type="text" 
+                              placeholder="Ej: UN-01"
+                              value={unitForm.codUnit}
+                              onChange={(e) => setUnitForm({ ...unitForm, codUnit: e.target.value })}
+                              className="w-full px-3 py-2 sm:py-2.5 bg-white border border-slate-205 rounded-xl font-bold text-[11px] text-slate-705 outline-academic-500 transition-all shadow-inner"
+                            />
+                          </div>
+
+                          {/* Unit Name */}
+                          <div>
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-tight block mb-1">Nombre de la Unidad *</label>
+                            <input 
+                              type="text" 
+                              placeholder="Ej: Modelado Físico y SQL"
+                              value={unitForm.nombre}
+                              onChange={(e) => setUnitForm({ ...unitForm, nombre: e.target.value })}
+                              className="w-full px-3 py-2 sm:py-2.5 bg-white border border-slate-205 rounded-xl font-bold text-[11px] text-slate-705 outline-academic-500 transition-all shadow-inner"
+                            />
+                          </div>
+
+                          {/* Hours & Ponderacion Grid */}
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-2">
+                            <div>
+                              <label className="text-[8px] font-black text-slate-400 uppercase block mb-1">Hora Acad.</label>
+                              <input 
+                                type="number" 
+                                min="0"
+                                value={unitForm.totalHoraAcademic === 0 ? '' : unitForm.totalHoraAcademic}
+                                onChange={(e) => setUnitForm({ ...unitForm, totalHoraAcademic: Math.max(0, parseInt(e.target.value) || 0) })}
+                                className="w-full px-2 py-2 bg-white border border-slate-205 rounded-xl font-black text-[11px] text-slate-705 text-left sm:text-center outline-academic-500 shadow-inner"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[8px] font-black text-slate-400 uppercase block mb-1">Hora Reloj</label>
+                              <input 
+                                type="number" 
+                                min="0"
+                                value={unitForm.totalHoraReloj === 0 ? '' : unitForm.totalHoraReloj}
+                                onChange={(e) => setUnitForm({ ...unitForm, totalHoraReloj: Math.max(0, parseInt(e.target.value) || 0) })}
+                                className="w-full px-2 py-2 bg-white border border-slate-205 rounded-xl font-black text-[11px] text-slate-705 text-left sm:text-center outline-academic-500 shadow-inner"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[8px] font-black text-slate-400 uppercase block mb-1" title="Porcentaje que representa de la nota completa">Ponderación (%)</label>
+                              <input 
+                                type="number" 
+                                min="0"
+                                max="100"
+                                value={unitForm.ponderacion === 0 ? '' : unitForm.ponderacion}
+                                onChange={(e) => setUnitForm({ ...unitForm, ponderacion: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) })}
+                                className="w-full px-2 py-2 bg-white border border-slate-205 rounded-xl font-black text-[11px] text-slate-705 text-left sm:text-center outline-academic-500 shadow-inner"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2 pt-1">
+                            {editingUnitIndex !== null && (
+                              <button
+                                type="button"
+                                onClick={resetUnitSubForm}
+                                className="px-2.5 py-2 bg-white hover:bg-slate-100 text-slate-500 border border-slate-205 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all shadow-sm"
+                              >
+                                Cancelar
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={handleAddOrUpdateUnit}
+                              className="flex-1 py-2 bg-academic-600 hover:bg-academic-700 text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all shadow-md shadow-academic-600/10 flex items-center justify-center gap-1.5"
+                            >
+                              <Check size={12} />
+                              {editingUnitIndex !== null ? 'Guardar Cambios' : 'Agregar a Lista'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right Side: Added Didactic Units Live list. (7 Columns) */}
+                      <div className="lg:col-span-7 space-y-3.5 sm:space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2">
+                          <h4 className="text-xs font-black text-slate-800 uppercase tracking-tight flex items-center gap-1.5">
+                            Unidades Definidas ({tempUnits.length})
+                          </h4>
+                          
+                          {/* Warning Indicators if hours/ponderacion do not balance compared to step 1 */}
+                          <div className="flex flex-wrap gap-1.5 sm:gap-2 text-[9px] font-bold">
+                            <span className={cn(
+                              "px-2 py-0.5 rounded-lg border",
+                              totalTempPonderacion === 100 
+                                ? "bg-emerald-50 border-emerald-100 text-emerald-800"
+                                : "bg-amber-50 border-amber-100 text-amber-800"
+                            )} title="Suma de ponderaciones de las unidades">
+                              Pond: {totalTempPonderacion}%
+                            </span>
+                            
+                            <span className={cn(
+                              "px-2 py-0.5 rounded-lg border",
+                              totalTempHoursAcademic === generalForm.totalHoraAcademic
+                                ? "bg-emerald-50 border-emerald-100 text-emerald-800"
+                                : "bg-amber-50 border-amber-100 text-amber-800"
+                            )} title="Horas académicas de las unidades vs. módulo total">
+                              H. Acad: {totalTempHoursAcademic}/{generalForm.totalHoraAcademic}h
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Warnings banner */}
+                        {(totalTempPonderacion !== 100 || totalTempHoursAcademic !== generalForm.totalHoraAcademic) && tempUnits.length > 0 && (
+                          <div className="p-2.5 sm:p-3 bg-amber-50 rounded-xl sm:rounded-2xl border border-amber-150 flex items-start gap-2 sm:gap-2.5">
+                            <AlertTriangle className="text-amber-500 shrink-0 mt-0.5" size={14} />
+                            <div className="text-[10px] text-amber-800 leading-normal font-semibold">
+                              {totalTempPonderacion !== 100 && (
+                                <p>• Las ponderaciones suman <strong className="font-extrabold">{totalTempPonderacion}%</strong>. Recomendamos completar exactamente el <span className="underline">100%</span>.</p>
+                              )}
+                              {totalTempHoursAcademic !== generalForm.totalHoraAcademic && (
+                                <p>• Las unidades suman <strong className="font-extrabold">{totalTempHoursAcademic}h Acad.</strong> mientras que el módulo general indica <strong className="font-extrabold">{generalForm.totalHoraAcademic}h</strong>.</p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* List items scroll container */}
+                        <div className="space-y-2.5 max-h-[280px] sm:max-h-[360px] overflow-y-auto pr-1">
+                          {tempUnits.length === 0 ? (
+                            <div className="border border-dashed border-slate-200 rounded-2xl sm:rounded-3xl p-8 sm:p-10 text-center space-y-2 text-slate-400 bg-slate-50/20">
+                              <Layers size={28} className="mx-auto text-slate-300" />
+                              <p className="text-[10px] font-black uppercase tracking-tight">No se han agregado unidades</p>
+                              <p className="text-[9px] font-semibold text-slate-400 leading-relaxed max-w-xs mx-auto">
+                                Formule una unidad a la izquierda y presione "Agregar a Lista" para comenzar.
+                              </p>
+                            </div>
+                          ) : (
+                            tempUnits.map((u, index) => (
+                              <div 
+                                key={u.codUnit + '-' + index}
+                                className={cn(
+                                  "border rounded-xl sm:rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white hover:border-slate-350 transition-all shadow-sm",
+                                  editingUnitIndex === index && "ring-2 ring-academic-500 border-academic-500 bg-academic-50/10"
+                                )}
+                              >
+                                <div className="space-y-1 min-w-0 flex-1 text-left">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-[8px] font-mono font-bold bg-slate-100 border border-slate-200 text-slate-500 px-1.5 py-0.5 rounded uppercase">
+                                      {u.codUnit}
+                                    </span>
+                                    <span className="text-[9px] font-black text-academic-700 bg-academic-50 border border-academic-100 px-1.5 py-0.5 rounded">
+                                      Ponderación: {u.ponderacion}%
+                                    </span>
+                                  </div>
+                                  <h5 className="text-[11px] font-black text-slate-800 leading-tight uppercase tracking-tight mt-1 truncate">
+                                    {u.nombre}
+                                  </h5>
+                                  <div className="flex gap-3 text-[9px] text-slate-450 font-bold pt-0.5">
+                                    <span>{u.totalHoraAcademic}h Académica</span>
+                                    <span>{u.totalHoraReloj}h Reloj</span>
+                                  </div>
+                                  
+                                  {u.planningFileName && (
+                                    <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-emerald-50 border border-emerald-100 text-[8px] text-emerald-800 font-extrabold mt-1">
+                                      <FileCheck size={10} className="text-emerald-500" />
+                                      <span className="max-w-[150px] truncate">{u.planningFileName}</span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="flex sm:flex-col items-center gap-1.5 shrink-0 self-start sm:self-auto pt-2 sm:pt-0 w-full sm:w-auto justify-end border-t border-slate-50 sm:border-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleEditTempUnit(index)}
+                                    className="p-1.5 sm:p-1.5 text-slate-400 hover:text-academic-600 hover:bg-slate-50 border border-slate-100 hover:border-slate-200 rounded-lg transition-all text-[9px] sm:text-[9px] font-bold flex items-center gap-1 shadow-sm bg-white"
+                                  >
+                                    <Edit2 size={11} />
+                                    <span>Editar</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteTempUnit(index)}
+                                    className="p-1.5 sm:p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 border border-slate-100 hover:border-rose-100 rounded-lg transition-all text-[9px] sm:text-[9px] font-bold flex items-center gap-1 shadow-sm bg-white"
+                                  >
+                                    <Trash2 size={11} />
+                                    <span>Borrar</span>
+                                  </button>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Step Navigation Button container */}
+                    <div className="flex items-center justify-between pt-4 sm:pt-6 border-t border-slate-100 mt-5 sm:mt-6">
+                      <button
+                        type="button"
+                        onClick={goToStep1}
+                        className="flex items-center gap-1.5 px-3.5 py-2.5 sm:px-5 sm:py-3 bg-slate-100 hover:bg-slate-150 text-slate-600 rounded-xl font-black text-[9px] sm:text-[10px] uppercase tracking-widest transition-all border border-slate-200 shadow-sm"
                       >
-                        Siguiente Paso
-                        <ChevronRight size={18} />
+                        <ArrowLeft size={13} />
+                        Atrás
                       </button>
-                    ) : (
-                      <button 
-                        onClick={handleFinalize}
-                        disabled={isProcessing}
-                        className="px-10 py-4 bg-emerald-600 text-white rounded-2xl font-bold shadow-xl shadow-emerald-500/20 active:scale-[0.98] transition-all flex items-center gap-2"
+
+                      <button
+                        type="button"
+                        onClick={handleSaveWholeModule}
+                        className="flex items-center gap-1.5 px-4 py-2.5 sm:px-6 sm:py-3 bg-academic-600 hover:bg-academic-700 text-white rounded-xl font-black text-[9px] sm:text-[10px] uppercase tracking-widest transition-all shadow-md shadow-academic-600/15"
                       >
-                        {isProcessing ? 'Guardando...' : 'Finalizar Planeación'}
-                        {!isProcessing && <CheckCircle2 size={18} />}
+                        <Check size={13} />
+                        {isEditMode ? 'Finalizar Cambios' : 'Guardar Módulo Completo'}
                       </button>
-                    )}
+                    </div>
                   </div>
-                </div>
-              </>
-            )}
+                )}
+
               </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
 
-      {/* Module Detail Modal */}
+      {/* Delete Confirmation Modal */}
       <AnimatePresence>
-        {showDetailModal && selectedModule && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        {isDeleteModalOpen && moduleToDelete && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setShowDetailModal(false)}
+              onClick={() => {
+                setIsDeleteModalOpen(false);
+                setModuleToDelete(null);
+              }}
               className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             />
             <motion.div
-              initial={{ opacity: 0, y: 50, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 50, scale: 0.95 }}
-              className="relative w-full max-w-5xl bg-white rounded-[3rem] shadow-2xl overflow-hidden shadow-slate-900/20 flex flex-col max-h-[90vh]"
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative w-full max-w-sm bg-white rounded-2xl border border-slate-200 p-6 shadow-2xl space-y-4"
             >
-              <div className="p-8 md:p-10 border-b border-slate-50 flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-4 flex-1">
-                  <div className="p-3 bg-academic-100 rounded-2xl text-academic-700">
-                    <BookOpen size={24} />
-                  </div>
-                  <div className="flex-1">
-                    {editingUnitId === 'header' ? (
-                      <div className="flex flex-wrap gap-4 items-end animate-in fade-in zoom-in-95">
-                        <div className="flex-1 min-w-[300px]">
-                          <label className="text-[10px] font-bold text-slate-400 uppercase">Nombre del Módulo</label>
-                          <input 
-                            autoFocus
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold outline-academic-500"
-                            value={selectedModule.nombre}
-                            onChange={(e) => setSelectedModule({ ...selectedModule, nombre: e.target.value })}
-                          />
-                        </div>
-                        <div className="w-32">
-                          <label className="text-[10px] font-bold text-slate-400 uppercase">Código</label>
-                          <input 
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold outline-academic-500"
-                            value={selectedModule.codModule}
-                            onChange={(e) => setSelectedModule({ ...selectedModule, codModule: e.target.value })}
-                          />
-                        </div>
-                        <button 
-                          onClick={() => setEditingUnitId(null)}
-                          className="px-4 py-2 bg-academic-600 text-white rounded-xl text-xs font-bold"
-                        >
-                          Listo
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="group flex items-start gap-4">
-                        <div>
-                          <span className="text-[10px] font-bold text-academic-500 uppercase tracking-widest">{selectedModule.codModule}</span>
-                          <h2 className="text-2xl font-bold text-slate-800 leading-tight">{selectedModule.nombre}</h2>
-                        </div>
-                        <button onClick={() => setEditingUnitId('header')} className="p-2 text-slate-300 hover:text-academic-600 opacity-0 group-hover:opacity-100 transition-all">
-                          <Edit2 size={16} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
+              <div className="text-center space-y-2">
+                <div className="inline-flex p-3 bg-rose-50 text-rose-600 border border-rose-100 rounded-full">
+                  <Trash2 size={24} />
                 </div>
-                <button 
-                  onClick={() => setShowDetailModal(false)}
-                  className="p-2 hover:bg-slate-100 rounded-xl transition-colors shrink-0"
-                >
-                  <X className="text-slate-400" size={24} />
-                </button>
+                <h3 className="text-base font-black text-slate-800 uppercase tracking-tight">
+                  ¿Eliminar Módulo?
+                </h3>
+                <p className="text-[11px] text-slate-500 leading-relaxed font-semibold">
+                  ¿Está seguro de que desea eliminar permanentemente el módulo formativo <span className="text-slate-800 font-extrabold">{moduleToDelete.nombre}</span>? Esta acción no se puede deshacer.
+                </p>
               </div>
-
-              <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
-                {/* Units List Sidebar */}
-                <div className="w-full md:w-96 bg-slate-50/50 border-r border-slate-100 overflow-y-auto p-6 space-y-4">
-                  <div className="flex items-center justify-between mb-6 px-2">
-                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Unidades Didácticas</h3>
-                    <span className="px-2 py-0.5 bg-academic-100 text-academic-600 rounded text-[9px] font-black">{units.length} Uds</span>
-                  </div>
-                  {units.map((unit) => (
-                    <div key={unit.id} className="group/unit relative">
-                      <div
-                        onClick={() => setActiveUnitInDetail(unit.id)}
-                        className={cn(
-                          "w-full text-left p-5 rounded-[2rem] transition-all border-2 pr-12 cursor-pointer relative overflow-hidden",
-                          activeUnitInDetail === unit.id 
-                            ? "bg-white border-academic-600 shadow-xl shadow-academic-500/10" 
-                            : "bg-white border-slate-100 hover:border-academic-200 text-slate-500 hover:shadow-lg"
-                        )}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <div className={cn(
-                            "px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border",
-                            activeUnitInDetail === unit.id 
-                              ? "bg-academic-600 text-white border-academic-600" 
-                              : "bg-slate-50 text-slate-400 border-slate-100"
-                          )}>
-                            UD • {unit.ponderacion}%
-                          </div>
-                          <div className="flex items-center gap-1">
-                             <Clock size={10} className="text-slate-300" />
-                             <span className="text-[10px] font-black font-mono">{unit.hr}h</span>
-                          </div>
-                        </div>
-
-                        {editingUnitId === unit.id ? (
-                          <div className="space-y-3 animate-in slide-in-from-top-2 relative z-10" onClick={(e) => e.stopPropagation()}>
-                            <input 
-                              autoFocus
-                              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold outline-academic-500 text-slate-800"
-                              value={unit.nombre}
-                              onChange={(e) => {
-                                const newUnits = units.map(u => u.id === unit.id ? { ...u, nombre: e.target.value } : u);
-                                setUnits(newUnits);
-                              }}
-                            />
-                            <div className="flex gap-3">
-                              <div className="flex-1">
-                                <label className="text-[7px] font-black text-slate-400 uppercase mb-1 block">Horas Reloj</label>
-                                <input 
-                                  type="number"
-                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-[10px] font-black text-academic-600"
-                                  value={unit.hr}
-                                  onChange={(e) => {
-                                    const newUnits = units.map(u => u.id === unit.id ? { ...u, hr: Number(e.target.value) } : u);
-                                    setUnits(newUnits);
-                                  }}
-                                />
-                              </div>
-                              <div className="flex-1">
-                                <label className="text-[7px] font-black text-slate-400 uppercase mb-1 block">Ponderación %</label>
-                                <input 
-                                  type="number"
-                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-[10px] font-black text-academic-600"
-                                  value={unit.ponderacion}
-                                  onChange={(e) => {
-                                    const newUnits = units.map(u => u.id === unit.id ? { ...u, ponderacion: Number(e.target.value) } : u);
-                                    setUnits(newUnits);
-                                  }}
-                                />
-                              </div>
-                            </div>
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); setEditingUnitId(null); }} 
-                              className="w-full py-2 bg-academic-600 hover:bg-academic-700 text-white rounded-xl text-[10px] font-black shadow-lg shadow-academic-500/20 active:scale-95 transition-all"
-                            >
-                              Guardar Cambios
-                            </button>
-                          </div>
-                        ) : (
-                          <p className={cn(
-                            "font-black text-sm leading-tight line-clamp-2",
-                            activeUnitInDetail === unit.id ? "text-slate-800" : "text-slate-600"
-                          )}>
-                            {unit.nombre || 'Nueva Unidad Didáctica'}
-                          </p>
-                        )}
-                        
-                        {activeUnitInDetail === unit.id && (
-                          <motion.div 
-                            layoutId="unit-active-indicator"
-                            className="absolute left-0 top-0 bottom-0 w-1 bg-academic-600"
-                          />
-                        )}
-                      </div>
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 opacity-0 group-hover/unit:opacity-100 transition-all transform translate-x-2 group-hover/unit:translate-x-0 z-20">
-                        <button onClick={(e) => { e.stopPropagation(); setEditingUnitId(unit.id); }} className="p-2 bg-white shadow-md border border-slate-100 rounded-xl text-slate-400 hover:text-academic-600 hover:scale-110 transition-all">
-                          <Edit2 size={12} />
-                        </button>
-                        <button onClick={(e) => { e.stopPropagation(); deleteUnit(unit.id); }} className="p-2 bg-white shadow-md border border-slate-100 rounded-xl text-slate-400 hover:text-rose-500 hover:scale-110 transition-all">
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                  <button onClick={addUnit} className="w-full py-5 border-2 border-dashed border-slate-200 rounded-[2rem] text-slate-400 text-xs font-black uppercase tracking-widest hover:border-academic-300 hover:text-academic-500 hover:bg-academic-50/30 transition-all flex items-center justify-center gap-2">
-                    <Plus size={16} />
-                    Agregar Nueva Unidad
-                  </button>
-                </div>
-
-                {/* Activities Content */}
-                <div className="flex-1 overflow-y-auto p-8 md:p-10">
-                  {activeUnitInDetail ? (
-                    <div className="space-y-8">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="text-xl font-bold text-slate-800">
-                            Actividades: {units.find(u => u.id === activeUnitInDetail)?.nombre}
-                          </h3>
-                          <p className="text-sm text-slate-400 mt-1">Carga horaria asignada para esta unidad</p>
-                        </div>
-                        <button onClick={addActivity} className="p-3 bg-academic-600 text-white rounded-xl shadow-lg shadow-academic-600/20 hover:bg-academic-700 transition-all">
-                          <Plus size={20} />
-                        </button>
-                      </div>
-
-                      <div className="grid gap-4">
-                        {activities.filter(a => a.unitId === activeUnitInDetail).length > 0 ? (
-                          activities.filter(a => a.unitId === activeUnitInDetail).map((act, idx) => (
-                            <motion.div 
-                              key={act.id}
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              className={cn(
-                                "p-5 bg-white border rounded-[2rem] shadow-sm flex items-center gap-6 transition-all",
-                                editingActivityId === act.id ? "border-academic-400 ring-2 ring-academic-50 shadow-lg" : "border-slate-100"
-                              )}
-                            >
-                              <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center font-bold text-slate-400 shrink-0">
-                                A{idx + 1}
-                              </div>
-                              <div className="flex-1">
-                                {editingActivityId === act.id ? (
-                                  <div className="space-y-3">
-                                    <input 
-                                      className="w-full p-2 bg-slate-50 rounded-lg text-sm font-bold outline-none border border-slate-200 focus:border-academic-400"
-                                      value={act.desc}
-                                      onChange={(e) => {
-                                        const newActs = activities.map(a => a.id === act.id ? { ...a, desc: e.target.value } : a);
-                                        setActivities(newActs);
-                                      }}
-                                    />
-                                    <div className="flex gap-4">
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase">H/A</span>
-                                        <input 
-                                          type="number" 
-                                          className="w-12 p-1 bg-slate-50 rounded border border-slate-200 text-xs font-bold text-academic-600"
-                                          value={act.ha}
-                                          onChange={(e) => {
-                                            const newActs = activities.map(a => a.id === act.id ? { ...a, ha: Number(e.target.value) } : a);
-                                            setActivities(newActs);
-                                          }}
-                                        />
-                                      </div>
-                                      <button onClick={() => setEditingActivityId(null)} className="ml-auto px-4 py-1.5 bg-academic-600 text-white rounded-lg text-[10px] font-bold">
-                                        Listo
-                                      </button>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <>
-                                    <p className="font-bold text-slate-700">{act.desc || 'Actividad sin descripción'}</p>
-                                    <div className="flex gap-4 mt-2">
-                                      <span className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1">
-                                        <Clock size={12} /> {act.ha}h Académicas
-                                      </span>
-                                      <span className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1">
-                                        <Clock size={12} /> {act.hr}h Reloj
-                                      </span>
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-                              <div className="flex gap-2">
-                                <button onClick={() => setEditingActivityId(act.id)} className="p-2 text-slate-300 hover:text-academic-600 transition-colors">
-                                  <Edit2 size={16} />
-                                </button>
-                                <button onClick={() => deleteActivity(act.id)} className="p-2 text-slate-300 hover:text-rose-500 transition-colors">
-                                  <Trash2 size={16} />
-                                </button>
-                              </div>
-                            </motion.div>
-                          ))
-                        ) : (
-                          <div className="py-20 flex flex-col items-center text-center opacity-40">
-                            <Layers size={48} className="mb-4" />
-                            <p className="font-bold text-slate-400">Sin actividades registradas</p>
-                            <button onClick={addActivity} className="mt-4 text-academic-600 font-bold text-sm underline">
-                              Comenzar a planificar
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-4">
-                      <Layers size={64} />
-                      <p className="font-bold">Selecciona una unidad para ver su planeación</p>
-                    </div>
-                  )}
-                </div>
+              <div className="flex gap-2.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDeleteModalOpen(false);
+                    setModuleToDelete(null);
+                  }}
+                  className="flex-1 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-500 border border-slate-200 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-sm"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteModule}
+                  className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-md shadow-rose-600/10"
+                >
+                  Confirmar
+                </button>
               </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
+
+      {/* Floating System Alerts / Toasts */}
+      <div className="fixed bottom-5 right-5 z-[80] flex flex-col gap-2.5 pointer-events-none">
+        <AnimatePresence>
+          {toasts.map((t) => (
+            <motion.div
+              key={t.id}
+              initial={{ opacity: 0, y: 15, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.12 } }}
+              className={cn(
+                "p-3 rounded-xl shadow-xl border text-[10px] font-black uppercase tracking-tight flex items-center gap-2 pointer-events-auto shadow-slate-900/5",
+                t.type === 'success' ? "bg-white border-emerald-250 text-emerald-800 shadow-[0_4px_16px_rgba(16,185,129,0.06)]" :
+                t.type === 'danger' ? "bg-white border-rose-250 text-rose-800 shadow-[0_4px_16px_rgba(244,63,94,0.06)]" :
+                "bg-white border-academic-250 text-academic-700 shadow-[0_4px_16px_rgba(0,0,0,0.04)]"
+              )}
+            >
+              <Check size={12} className={cn(
+                "shrink-0",
+                t.type === 'success' ? "text-emerald-600" :
+                t.type === 'danger' ? "text-rose-600" :
+                "text-academic-600"
+              )} />
+              <span>{t.message}</span>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
     </div>
   );
 };

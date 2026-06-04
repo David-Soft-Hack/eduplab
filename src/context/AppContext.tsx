@@ -6,8 +6,8 @@ interface AppContextType {
   setModules: React.Dispatch<React.SetStateAction<any[]>>;
   bitacoras: any[];
   setBitacoras: React.Dispatch<React.SetStateAction<any[]>>;
-  students: any[];
-  setStudents: React.Dispatch<React.SetStateAction<any[]>>;
+  teachers: any[];
+  setTeachers: React.Dispatch<React.SetStateAction<any[]>>;
   attendanceRecords: any[];
   setAttendanceRecords: React.Dispatch<React.SetStateAction<any[]>>;
   notifications: any[];
@@ -69,17 +69,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ]
     }
   ]);
-  const [students, setStudents] = useState<any[]>([
-    { id: 'STU-001', nombre: 'Juan Pérez', email: 'juan.perez@example.com', carrera: 'Análisis de Sistemas', grupo: '32323', estado: 'Activo', fechaRegistro: '2024-01-10' },
-    { id: 'STU-002', nombre: 'María García', email: 'maria.garcia@example.com', carrera: 'Ingeniería de Sistemas', grupo: '32323', estado: 'Activo', fechaRegistro: '2024-02-15' },
-    { id: 'STU-003', nombre: 'Carlos Rodríguez', email: 'carlos.rodriguez@example.com', carrera: 'Análisis de Sistemas', grupo: 'G-200', estado: 'Baja', fechaRegistro: '2024-03-20' },
+  const [teachers, setTeachers] = useState<any[]>([
+    { id: 'DOC-001', nombre: 'Ing. Carlos Mendoza', email: 'carlos.mendoza@instituto.edu', telefono: '50683019284', carrera: 'Análisis de Sistemas', especialidad: 'Bases de Datos', estado: 'Activo', fechaRegistro: '2025-01-10' },
+    { id: 'DOC-002', nombre: 'MSc. Elena Rostova', email: 'elena.rostova@instituto.edu', telefono: '50688776655', carrera: 'Ingeniería de Sistemas', especialidad: 'Arquitectura de Software', estado: 'Activo', fechaRegistro: '2023-05-15' },
+    { id: 'DOC-003', nombre: 'Lic. Roberto Quirós', email: 'roberto.quiros@instituto.edu', telefono: '50670123456', carrera: 'Análisis de Sistemas', especialidad: 'Metodología Ágil', estado: 'Activo', fechaRegistro: '2024-03-20' },
+    { id: 'DOC-004', nombre: 'Dra. Sylvia Salazar', email: 'sylvia.salazar@instituto.edu', telefono: '50687654321', carrera: 'Ciencia de Datos', especialidad: 'Inteligencia Artificial', estado: 'Activo', fechaRegistro: '2024-08-01' },
   ]);
 
   return (
     <AppContext.Provider value={{ 
       modules, setModules, 
       bitacoras, setBitacoras, 
-      students, setStudents,
+      teachers, setTeachers,
       attendanceRecords, setAttendanceRecords,
       notifications, setNotifications
     }}>

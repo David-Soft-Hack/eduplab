@@ -12,8 +12,15 @@ export const MOCK_MODULES = [
     nombre: 'Sistemas Operativos',
     totalHoraAcademic: 120,
     totalHoraReloj: 100,
+    cantidadUnidades: 3,
     carrera: 'Ingeniería de Sistemas',
     fechaCreacion: '2024-01-15',
+    planningFileName: 'Planificacion_Anual_SO.pdf',
+    units: [
+      { codUnit: 'UN-SO-01', nombre: 'Introducción a los SO y Arquitectura', totalHoraAcademic: 30, totalHoraReloj: 25, ponderacion: 25 },
+      { codUnit: 'UN-SO-02', nombre: 'Gestión y Planificación de Procesos', totalHoraAcademic: 50, totalHoraReloj: 40, ponderacion: 45 },
+      { codUnit: 'UN-SO-03', nombre: 'Gestión de Memoria y Memoria Virtual', totalHoraAcademic: 40, totalHoraReloj: 35, ponderacion: 30 }
+    ],
     activities: [
       { id: '1', unitId: 1, desc: 'Introducción a los SO y Arquitectura', ha: 10 },
       { id: '2', unitId: 1, desc: 'Gestión de Procesos y Hilos', ha: 20 },
@@ -28,8 +35,14 @@ export const MOCK_MODULES = [
     nombre: 'Base de Datos I',
     totalHoraAcademic: 96,
     totalHoraReloj: 80,
+    cantidadUnidades: 2,
     carrera: 'Análisis de Sistemas',
     fechaCreacion: '2024-02-10',
+    planningFileName: 'Planeacion_Curricular_BD.pdf',
+    units: [
+      { codUnit: 'UN-BD-01', nombre: 'Fundamientos de BD y Modelo E-R', totalHoraAcademic: 46, totalHoraReloj: 40, ponderacion: 55 },
+      { codUnit: 'UN-BD-02', nombre: 'Lenguaje SQL y Transacciones', totalHoraAcademic: 50, totalHoraReloj: 40, ponderacion: 45 }
+    ],
     activities: [
       { id: '1', unitId: 1, desc: 'Fundamentos de BD y Modelo E-R', ha: 16 },
       { id: '2', unitId: 2, desc: 'Modelo Relacional y Álgebra Relacional', ha: 20 },

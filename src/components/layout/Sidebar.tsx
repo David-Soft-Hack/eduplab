@@ -4,12 +4,10 @@ import {
   LayoutDashboard, 
   BookOpen, 
   FileText, 
-  Calendar, 
-  Users,
-  CheckSquare,
   Settings, 
   LogOut,
-  GraduationCap
+  GraduationCap,
+  Award
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -18,9 +16,7 @@ const Sidebar: React.FC = () => {
     { icon: LayoutDashboard, label: 'Inicio', path: '/' },
     { icon: BookOpen, label: 'Módulos', path: '/modules' },
     { icon: FileText, label: 'Bitácoras', path: '/bitacoras' },
-    { icon: Calendar, label: 'Calendario', path: '/calendar' },
-    { icon: Users, label: 'Estudiantes', path: '/students' },
-    { icon: CheckSquare, label: 'Asistencias', path: '/attendance' },
+    { icon: Award, label: 'Programas', path: '/programs' },
   ];
 
   return (

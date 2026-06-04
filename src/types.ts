@@ -14,8 +14,17 @@ export interface Module {
   nombre: string;
   totalHoraAcademic: number;
   totalHoraReloj: number;
+  cantidadUnidades?: number;
   carrera: string;
   fechaCreacion: string;
+  units?: {
+    codUnit: string;
+    nombre: string;
+    totalHoraAcademic: number;
+    totalHoraReloj: number;
+    ponderacion: number;
+    planningFileName?: string;
+  }[];
 }
 
 export interface Unit {

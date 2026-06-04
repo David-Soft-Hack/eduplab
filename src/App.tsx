@@ -4,9 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import Dashboard from './pages/Dashboard';
 import Modules from './pages/Modules';
 import Bitacoras from './pages/Bitacoras';
-import AcademicCalendar from './pages/AcademicCalendar';
-import Students from './pages/Students';
-import Attendance from './pages/Attendance';
+import Programas from './pages/Programas';
 import Login from './pages/Login';
 import Splash from './pages/Splash';
 import Sidebar from './components/layout/Sidebar';
@@ -51,9 +49,7 @@ const App: React.FC = () => {
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/modules" element={<Modules />} />
                     <Route path="/bitacoras" element={<Bitacoras />} />
-                    <Route path="/calendar" element={<AcademicCalendar />} />
-                    <Route path="/students" element={<Students />} />
-                    <Route path="/attendance" element={<Attendance />} />
+                    <Route path="/programs" element={<Programas />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </div>

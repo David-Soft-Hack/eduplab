@@ -1,6 +1,8 @@
 {
   "name": "EduPlan Docente",
-  "description": "Plataforma profesional de gestión académica para docentes: módulos, unidades didácticas y calendarios automatizados.",
+  "description": "Gestión de planes curriculares, módulos formativos y coordinación de bitácoras académicas.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }
