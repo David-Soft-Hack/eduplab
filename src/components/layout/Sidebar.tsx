@@ -18,7 +18,7 @@ const Sidebar: React.FC = () => {
     { icon: BookOpen, label: 'Módulos', path: '/modules' },
     { icon: FileText, label: 'Bitácoras', path: '/bitacoras' },
     { icon: Award, label: 'Programas', path: '/programs' },
-    { icon: CalendarRange, label: 'Planificación', path: '/plan' },
+    { icon: CalendarRange, label: 'Agenda Académica', path: '/plan' },
   ];
 
   return (

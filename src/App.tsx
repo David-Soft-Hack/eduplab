@@ -5,7 +5,7 @@ import Dashboard from './pages/Dashboard';
 import Modules from './pages/Modules';
 import Bitacoras from './pages/Bitacoras';
 import Programas from './pages/Programas';
-import Planificacion from './pages/Planificacion';
+import AcademicCalendar from './pages/AcademicCalendar';
 import Login from './pages/Login';
 import Splash from './pages/Splash';
 import Sidebar from './components/layout/Sidebar';
@@ -50,7 +50,7 @@ const App: React.FC = () => {
                     <Route path="/modules" element={<Modules />} />
                     <Route path="/bitacoras" element={<Bitacoras />} />
                     <Route path="/programs" element={<Programas />} />
-                    <Route path="/plan" element={<Planificacion />} />
+                    <Route path="/plan" element={<AcademicCalendar />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </div>

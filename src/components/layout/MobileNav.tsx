@@ -9,7 +9,7 @@ const MobileNav: React.FC = () => {
     { icon: BookOpen, label: 'Módulos', path: '/modules' },
     { icon: FileText, label: 'Bitácoras', path: '/bitacoras' },
     { icon: Award, label: 'Programas', path: '/programs' },
-    { icon: CalendarRange, label: 'Plan', path: '/plan' },
+    { icon: CalendarRange, label: 'Agenda', path: '/plan' },
   ];
 
   return (
